@@ -150,24 +150,257 @@ export function getStopId(item = {}, index = 0) {
   return item.id || `stop-${item.sequence || item.order || index + 1}`;
 }
 
-export async function fetchJson(path, options = {}) {
-  const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://127.0.0.1:8000";
-  let response;
+export const STATIC_DEMO_MESSAGE = "실시간 API 서버에 연결할 수 없어 저장된 데모 데이터를 표시합니다.";
+
+const API_TIMEOUT_MS = 2500;
+const STATIC_DATA_CACHE = {};
+
+function getApiBaseUrl() {
+  return (process.env.NEXT_PUBLIC_API_BASE_URL || "").trim();
+}
+
+function isLocalApiUrl(apiBaseUrl) {
+  if (!apiBaseUrl) {
+    return true;
+  }
 
   try {
-    response = await fetch(`${apiBaseUrl}${path}`, {
+    const hostname = new URL(apiBaseUrl).hostname.toLowerCase();
+    return ["localhost", "127.0.0.1", "::1", "0.0.0.0"].includes(hostname);
+  } catch (error) {
+    return true;
+  }
+}
+
+function shouldUseStaticFallback(apiBaseUrl) {
+  return !apiBaseUrl || isLocalApiUrl(apiBaseUrl);
+}
+
+async function loadStaticData(fileName) {
+  if (!STATIC_DATA_CACHE[fileName]) {
+    STATIC_DATA_CACHE[fileName] = fetch(`/data/${fileName}`, { cache: "force-cache" }).then((response) => {
+      if (!response.ok) {
+        throw new Error(STATIC_DEMO_MESSAGE);
+      }
+      return response.json();
+    });
+  }
+
+  return STATIC_DATA_CACHE[fileName];
+}
+
+function cloneStaticPayload(payload) {
+  return JSON.parse(JSON.stringify(payload));
+}
+
+function getRequestUrl(path) {
+  return new URL(path, "https://static.local");
+}
+
+function getLimit(url, fallback = 10) {
+  const parsed = Number(url.searchParams.get("limit"));
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+function parseRequestBody(body) {
+  if (!body) {
+    return {};
+  }
+  if (typeof body === "string") {
+    try {
+      return JSON.parse(body);
+    } catch (error) {
+      return {};
+    }
+  }
+  if (typeof body === "object") {
+    return body;
+  }
+  return {};
+}
+
+function withStaticMeta(payload) {
+  return {
+    ...payload,
+    static_fallback: true,
+    fallback_message: STATIC_DEMO_MESSAGE,
+  };
+}
+
+async function getOptimizedFallback(path) {
+  const url = getRequestUrl(path);
+  const data = await loadStaticData("recommendation_results.json");
+
+  if (url.pathname === "/optimized/queries") {
+    const limit = getLimit(url, data.queries?.length || 100);
+    return withStaticMeta({
+      count: data.count || data.queries?.length || 0,
+      source_files: data.source_files || {},
+      queries: (data.queries || []).slice(0, limit),
+    });
+  }
+
+  if (url.pathname === "/optimized/recommendations") {
+    const limit = getLimit(url, 10);
+    const requestedQueryId = url.searchParams.get("query_id");
+    const query =
+      (data.queries || []).find((item) => item.query_id === requestedQueryId) ||
+      (data.queries || [])[0] ||
+      {};
+    const queryId = query.query_id || requestedQueryId;
+    const recommendations = (data.optimized_recommendations || [])
+      .filter((item) => !queryId || item.query_id === queryId)
+      .slice(0, limit);
+    const coverage = (data.coverage || []).filter((item) => !queryId || item.query_id === queryId).slice(0, 1);
+    const hitAnalysis = (data.hit_analysis || []).filter((item) => !queryId || item.query_id === queryId).slice(0, 1);
+
+    return withStaticMeta({
+      model_name: "optimized_proposed_static",
+      query,
+      recommendations,
+      coverage,
+      hit_analysis: hitAnalysis,
+      best_weights: data.best_weights || {},
+      source_files: data.source_files || {},
+    });
+  }
+
+  return null;
+}
+
+async function getRouteFallback(path, body) {
+  const url = getRequestUrl(path);
+  const data = await loadStaticData("map_routes.json");
+
+  if (url.pathname === "/route/options") {
+    return withStaticMeta(cloneStaticPayload(data.route_options || {}));
+  }
+
+  if (url.pathname === "/route/sample") {
+    return withStaticMeta(cloneStaticPayload(data.sample_route || {}));
+  }
+
+  if (url.pathname === "/route/recommend") {
+    const request = parseRequestBody(body);
+    const route = cloneStaticPayload(data.sample_route || {});
+    const requestedVisits = Number(request.num_visits) || route.timeline?.length || 5;
+    const timeline = (route.timeline || [])
+      .slice(0, requestedVisits)
+      .map((item, index) => ({ ...item, order: index + 1 }));
+
+    return withStaticMeta({
+      ...route,
+      request: {
+        ...(route.request || {}),
+        ...request,
+        num_visits: timeline.length,
+      },
+      summary: {
+        ...(route.summary || {}),
+        date: request.date || route.summary?.date,
+        start_location: request.start_location || route.summary?.start_location,
+        target_voter_group: request.target_voter_group || route.summary?.target_voter_group,
+        campaign_goal: request.campaign_goal || route.summary?.campaign_goal,
+        num_visits: timeline.length,
+        model: "static_demo_route",
+      },
+      timeline,
+      insights: [
+        "현재 정적 데모 모드로 실행 중입니다.",
+        ...((route.insights || []).slice(0, 2)),
+      ],
+    });
+  }
+
+  return null;
+}
+
+async function getEvaluationFallback(path) {
+  const url = getRequestUrl(path);
+  const data = await loadStaticData("evaluation_summary.json");
+
+  if (url.pathname === "/evaluation/dashboard") {
+    return withStaticMeta(cloneStaticPayload(data.evaluation_dashboard || {}));
+  }
+
+  if (url.pathname === "/coverage/dashboard") {
+    const limit = getLimit(url, 12);
+    const coverage = cloneStaticPayload(data.coverage_dashboard || {});
+    coverage.missing_by_place_type = (coverage.missing_by_place_type || []).slice(0, limit);
+    coverage.missing_by_district = (coverage.missing_by_district || []).slice(0, limit);
+    coverage.missing_by_campaign_activity_type = (coverage.missing_by_campaign_activity_type || []).slice(0, limit);
+    return withStaticMeta(coverage);
+  }
+
+  return null;
+}
+
+async function getStaticFallback(path, body) {
+  const url = getRequestUrl(path);
+
+  if (url.pathname.startsWith("/optimized/")) {
+    return getOptimizedFallback(path);
+  }
+  if (url.pathname.startsWith("/route/")) {
+    return getRouteFallback(path, body);
+  }
+  if (url.pathname === "/evaluation/dashboard" || url.pathname === "/coverage/dashboard") {
+    return getEvaluationFallback(path);
+  }
+
+  return null;
+}
+
+async function tryStaticFallback(path, body) {
+  try {
+    return await getStaticFallback(path, body);
+  } catch (error) {
+    return null;
+  }
+}
+
+export async function fetchJson(path, options = {}) {
+  const apiBaseUrl = getApiBaseUrl();
+
+  if (shouldUseStaticFallback(apiBaseUrl)) {
+    const staticPayload = await tryStaticFallback(path, options.body);
+    if (staticPayload) {
+      return staticPayload;
+    }
+    throw new Error(STATIC_DEMO_MESSAGE);
+  }
+
+  let response;
+  const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
+  const timeoutId = controller ? globalThis.setTimeout(() => controller.abort(), API_TIMEOUT_MS) : null;
+
+  try {
+    response = await fetch(`${apiBaseUrl.replace(/\/$/, "")}${path}`, {
       cache: "no-store",
       ...options,
+      signal: controller?.signal || options.signal,
       headers: {
         ...(options.body ? { "Content-Type": "application/json" } : {}),
         ...(options.headers || {}),
       },
     });
   } catch (error) {
-    throw new Error("백엔드 서버와 연결할 수 없습니다. FastAPI 서버가 실행 중인지 확인해주세요.");
+    const staticPayload = await tryStaticFallback(path, options.body);
+    if (staticPayload) {
+      return staticPayload;
+    }
+    throw new Error(STATIC_DEMO_MESSAGE);
+  } finally {
+    if (timeoutId) {
+      globalThis.clearTimeout(timeoutId);
+    }
   }
 
   if (!response.ok) {
+    const staticPayload = await tryStaticFallback(path, options.body);
+    if (staticPayload) {
+      return staticPayload;
+    }
     if (response.status === 404) {
       throw new Error("필요한 데이터 파일을 찾을 수 없습니다.");
     }
@@ -346,7 +579,7 @@ export function ErrorState({ title = "데이터를 불러오지 못했습니다"
   return (
     <div className="statePanel error" role="alert">
       <strong>{title}</strong>
-      <p>{message || "백엔드 서버와 output CSV 상태를 확인해주세요."}</p>
+      <p>{message || STATIC_DEMO_MESSAGE}</p>
       {onRetry ? (
         <button type="button" onClick={onRetry}>
           다시 시도

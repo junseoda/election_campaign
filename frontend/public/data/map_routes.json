@@ -1,0 +1,335 @@
+{
+  "static_fallback": true,
+  "fallback_message": "실시간 API 서버에 연결할 수 없어 저장된 데모 데이터를 표시합니다.",
+  "source_files": {
+    "optimized_recommendations": "output/experiments_optimized/optimized_proposed/recommendation_results.csv"
+  },
+  "route_options": {
+    "districts": [
+      "강남구",
+      "강동구",
+      "강북구",
+      "강서구",
+      "관악구",
+      "광진구",
+      "광화문",
+      "구로구",
+      "금천구",
+      "노원구",
+      "동대문구",
+      "동작구",
+      "마포구",
+      "서대문구",
+      "서초구",
+      "성동구",
+      "성북구",
+      "송파구",
+      "양천구",
+      "영등포구",
+      "용산구",
+      "은평구",
+      "종로구",
+      "중구",
+      "중랑구"
+    ],
+    "target_voter_groups": [
+      "상인",
+      "지역주민",
+      "생활권 유권자",
+      "노년층",
+      "복지수요자",
+      "생활체육 참여자",
+      "일반시민",
+      "직장인",
+      "퇴근길 유권자",
+      "가족단위",
+      "상인,지역주민",
+      "상인,지역주민,직장인",
+      "지역주민,일반시민",
+      "직장인,지역주민",
+      "지역주민,직장인,일반시민",
+      "상인,지역주민,장애인",
+      "체육인,일반시민,지역주민",
+      "상인,지역주민,관광객",
+      "노년층,취약계층,지역주민",
+      "일반시민,지역주민",
+      "상인,지역주민,이동인구",
+      "지역주민,직장인",
+      "노동자,직장인",
+      "노동자,일반시민",
+      "여성,체육인,일반시민",
+      "체육인,지역주민",
+      "직장인,금융업 종사자",
+      "가족/어린이,일반시민",
+      "가족/어린이,체육인,일반시민",
+      "노년층,일반시민",
+      "청년,직장인,전문가",
+      "소상공인,상인",
+      "체육인,일반시민,가족/어린이",
+      "청년,지역주민,상인",
+      "종교인,일반시민"
+    ],
+    "campaign_goals": [
+      "지역상권방문",
+      "복지현장방문",
+      "체육행사",
+      "퇴근인사",
+      "방문인사",
+      "거리인사",
+      "현장방문",
+      "기념행사",
+      "정책간담회",
+      "종교행사"
+    ],
+    "place_types": [
+      "market",
+      "senior_friendly",
+      "subway",
+      "park"
+    ],
+    "default_time_slots": [
+      {
+        "label": "??",
+        "start": "07:30",
+        "end": "09:30"
+      },
+      {
+        "label": "??",
+        "start": "10:00",
+        "end": "12:00"
+      },
+      {
+        "label": "??",
+        "start": "12:00",
+        "end": "14:00"
+      },
+      {
+        "label": "??",
+        "start": "14:00",
+        "end": "17:00"
+      },
+      {
+        "label": "??",
+        "start": "17:00",
+        "end": "20:00"
+      }
+    ],
+    "default_request": {
+      "date": "2026-03-10",
+      "start_time": "09:00",
+      "end_time": "18:00",
+      "start_location": "????",
+      "districts": [
+        "중구"
+      ],
+      "target_voter_group": "상인;지역주민;생활권 유권자",
+      "campaign_goal": "지역상권방문",
+      "preferred_place_types": [
+        "market"
+      ],
+      "num_visits": 5,
+      "avoid_duplicates": true
+    },
+    "static_fallback": true
+  },
+  "sample_route": {
+    "static_fallback": true,
+    "fallback_message": "실시간 API 서버에 연결할 수 없어 저장된 데모 데이터를 표시합니다.",
+    "request": {
+      "date": "2026-03-10",
+      "start_time": "09:00",
+      "end_time": "18:00",
+      "start_location": "????",
+      "districts": [
+        "중구"
+      ],
+      "target_voter_group": "상인;지역주민;생활권 유권자",
+      "campaign_goal": "지역상권방문",
+      "preferred_place_types": [
+        "market"
+      ],
+      "num_visits": 5,
+      "avoid_duplicates": true
+    },
+    "summary": {
+      "date": "2026-03-10",
+      "day_of_week": "화",
+      "start_location": "????",
+      "start_location_district": "??",
+      "num_visits": 5,
+      "estimated_total_time": "9?? 0?",
+      "target_voter_group": "상인;지역주민;생활권 유권자",
+      "campaign_goal": "지역상권방문",
+      "place_type_diversity": 1,
+      "avoid_duplicates": true,
+      "model": "static_demo_route"
+    },
+    "timeline": [
+      {
+        "order": 1,
+        "time": "09:00",
+        "place_name": "남대문시장",
+        "district": "중구",
+        "place_type": "전통시장",
+        "address": "확인 필요",
+        "candidate_source": "static_fallback",
+        "estimated_travel_time_from_previous": "0?",
+        "score": 1.7431,
+        "score_breakdown": {
+          "optimized_place_score": 1.7431,
+          "time_slot_fit_score": 0.8,
+          "target_voter_fit_score": 0.75,
+          "district_fit_score": 1,
+          "start_location_fit_score": 0.2,
+          "diversity_bonus": 0,
+          "duplicate_visit_penalty": 0,
+          "travel_distance_penalty": 0
+        },
+        "sequence_reason": "남대문시장 방문을 포함한 정적 데모 동선입니다.",
+        "recommendation_reason": "실시간 API 서버에 연결할 수 없어 저장된 추천 장소를 표시합니다.",
+        "lat": 37.5592,
+        "lng": 126.9777,
+        "map_position": {
+          "lat": 37.5592,
+          "lng": 126.9777,
+          "mock_x": 20,
+          "mock_y": 32
+        }
+      },
+      {
+        "order": 2,
+        "time": "10:45",
+        "place_name": "평화시장",
+        "district": "중구",
+        "place_type": "전통시장",
+        "address": "확인 필요",
+        "candidate_source": "static_fallback",
+        "estimated_travel_time_from_previous": "18?",
+        "score": 1.58928,
+        "score_breakdown": {
+          "optimized_place_score": 1.58928,
+          "time_slot_fit_score": 0.8,
+          "target_voter_fit_score": 0.75,
+          "district_fit_score": 1,
+          "start_location_fit_score": 0,
+          "diversity_bonus": 0,
+          "duplicate_visit_penalty": 0,
+          "travel_distance_penalty": 0
+        },
+        "sequence_reason": "평화시장 방문을 포함한 정적 데모 동선입니다.",
+        "recommendation_reason": "실시간 API 서버에 연결할 수 없어 저장된 추천 장소를 표시합니다.",
+        "lat": 37.5706,
+        "lng": 127.0074,
+        "map_position": {
+          "lat": 37.5706,
+          "lng": 127.0074,
+          "mock_x": 32,
+          "mock_y": 40
+        }
+      },
+      {
+        "order": 3,
+        "time": "12:30",
+        "place_name": "삼익패션타운",
+        "district": "중구",
+        "place_type": "전통시장",
+        "address": "확인 필요",
+        "candidate_source": "static_fallback",
+        "estimated_travel_time_from_previous": "18?",
+        "score": 1.557659,
+        "score_breakdown": {
+          "optimized_place_score": 1.557659,
+          "time_slot_fit_score": 0.8,
+          "target_voter_fit_score": 0.75,
+          "district_fit_score": 1,
+          "start_location_fit_score": 0,
+          "diversity_bonus": 0,
+          "duplicate_visit_penalty": 0,
+          "travel_distance_penalty": 0
+        },
+        "sequence_reason": "삼익패션타운 방문을 포함한 정적 데모 동선입니다.",
+        "recommendation_reason": "실시간 API 서버에 연결할 수 없어 저장된 추천 장소를 표시합니다.",
+        "lat": 37.5692,
+        "lng": 127.0085,
+        "map_position": {
+          "lat": 37.5692,
+          "lng": 127.0085,
+          "mock_x": 44,
+          "mock_y": 48
+        }
+      },
+      {
+        "order": 4,
+        "time": "15:10",
+        "place_name": "동평화시장",
+        "district": "중구",
+        "place_type": "전통시장",
+        "address": "확인 필요",
+        "candidate_source": "static_fallback",
+        "estimated_travel_time_from_previous": "18?",
+        "score": 1.547039,
+        "score_breakdown": {
+          "optimized_place_score": 1.547039,
+          "time_slot_fit_score": 0.8,
+          "target_voter_fit_score": 0.75,
+          "district_fit_score": 1,
+          "start_location_fit_score": 0,
+          "diversity_bonus": 0,
+          "duplicate_visit_penalty": 0,
+          "travel_distance_penalty": 0
+        },
+        "sequence_reason": "동평화시장 방문을 포함한 정적 데모 동선입니다.",
+        "recommendation_reason": "실시간 API 서버에 연결할 수 없어 저장된 추천 장소를 표시합니다.",
+        "lat": 37.5686,
+        "lng": 127.0097,
+        "map_position": {
+          "lat": 37.5686,
+          "lng": 127.0097,
+          "mock_x": 56,
+          "mock_y": 56
+        }
+      },
+      {
+        "order": 5,
+        "time": "17:40",
+        "place_name": "청평화시장",
+        "district": "중구",
+        "place_type": "전통시장",
+        "address": "확인 필요",
+        "candidate_source": "static_fallback",
+        "estimated_travel_time_from_previous": "18?",
+        "score": 1.535818,
+        "score_breakdown": {
+          "optimized_place_score": 1.535818,
+          "time_slot_fit_score": 0.8,
+          "target_voter_fit_score": 0.75,
+          "district_fit_score": 1,
+          "start_location_fit_score": 0,
+          "diversity_bonus": 0,
+          "duplicate_visit_penalty": 0,
+          "travel_distance_penalty": 0
+        },
+        "sequence_reason": "청평화시장 방문을 포함한 정적 데모 동선입니다.",
+        "recommendation_reason": "실시간 API 서버에 연결할 수 없어 저장된 추천 장소를 표시합니다.",
+        "lat": 37.5682,
+        "lng": 127.0105,
+        "map_position": {
+          "lat": 37.5682,
+          "lng": 127.0105,
+          "mock_x": 68,
+          "mock_y": 64
+        }
+      }
+    ],
+    "insights": [
+      "현재 정적 데모 모드로 실행 중입니다.",
+      "실시간 API 서버가 연결되면 입력 조건 기반 추천 동선으로 갱신됩니다."
+    ],
+    "map": {
+      "mode": "static_demo_preview",
+      "start_location": "????",
+      "start_district": "??",
+      "note": "??? ?? ??? ???? ???? ???? ???? ?? ? ????."
+    }
+  }
+}

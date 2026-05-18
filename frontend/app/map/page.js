@@ -10,6 +10,7 @@ import {
   LoadingState,
   MetricCard,
   Section,
+  STATIC_DEMO_MESSAGE,
   Tag,
   buildShortReason,
   fetchJson,
@@ -21,6 +22,10 @@ import {
 import KakaoRouteMap from "../components/map/KakaoRouteMap";
 
 const FILTERS = ["전체", "교통거점", "전통시장", "복지시설", "공원", "기타"];
+
+function hasCoordinates(stop = {}) {
+  return Number.isFinite(Number(stop.lat)) && Number.isFinite(Number(stop.lng));
+}
 
 function buildStops(timeline = []) {
   return timeline.map((item, index) => ({
@@ -51,6 +56,7 @@ export default function MapPreviewPage() {
 
   const stops = useMemo(() => buildStops(route?.timeline || []), [route]);
   const filteredStops = useMemo(() => stops.filter((stop) => matchesFilter(stop, filter)), [stops, filter]);
+  const markerStops = useMemo(() => filteredStops.filter(hasCoordinates), [filteredStops]);
   const selectedStop = useMemo(
     () => stops.find((stop) => stop.id === selectedStopId) || filteredStops[0] || stops[0],
     [stops, filteredStops, selectedStopId]
@@ -120,6 +126,12 @@ export default function MapPreviewPage() {
 
       {errorMessage ? <ErrorState message={errorMessage} onRetry={loadMapData} /> : null}
       {isLoading ? <LoadingState title="지도 데이터를 준비하고 있어요" /> : null}
+      {!isLoading && !errorMessage && route?.static_fallback ? (
+        <div className="demoNotice" role="status">
+          <Tag tone="amber">정적 데모 모드</Tag>
+          <span>{route.fallback_message || STATIC_DEMO_MESSAGE}</span>
+        </div>
+      ) : null}
 
       {!isLoading && !errorMessage ? (
         <div className="mapPageGrid">
@@ -137,7 +149,7 @@ export default function MapPreviewPage() {
               ))}
             </div>
             <KakaoRouteMap
-              stops={filteredStops}
+              stops={markerStops}
               selectedStopId={selectedStopId}
               onSelectStop={setSelectedStopId}
               startLabel={route?.summary?.start_location || "성동구청"}
@@ -187,6 +199,7 @@ export default function MapPreviewPage() {
                     <div>
                       <strong>{stop.place_name}</strong>
                       <small>{stop.time || "시간 확인"} · {stop.district} · {stop.place_type}</small>
+                      {!hasCoordinates(stop) ? <small className="coordWarning">좌표 확인 필요</small> : null}
                     </div>
                     <em>{stop.fit_label}</em>
                   </button>

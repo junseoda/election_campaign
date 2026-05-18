@@ -12,6 +12,7 @@ import {
   MetricCard,
   RouteTimeline,
   Section,
+  STATIC_DEMO_MESSAGE,
   Tag,
   buildChecklist,
   buildShortReason,
@@ -494,6 +495,12 @@ export default function RoutePlannerPage() {
 
       {errorMessage ? <ErrorState message={errorMessage} onRetry={loadInitialData} /> : null}
       {isLoading ? <LoadingState title="동선 추천 데이터를 준비하고 있어요" /> : null}
+      {!isLoading && !errorMessage && (route?.static_fallback || options?.static_fallback) ? (
+        <div className="demoNotice" role="status">
+          <Tag tone="amber">데모 동선</Tag>
+          <span>{route?.fallback_message || options?.fallback_message || STATIC_DEMO_MESSAGE}</span>
+        </div>
+      ) : null}
 
       {!isLoading && !errorMessage && form ? (
         <>

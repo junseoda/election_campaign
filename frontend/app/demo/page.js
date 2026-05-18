@@ -12,6 +12,7 @@ import {
   MetricCard,
   RecommendationCard,
   Section,
+  STATIC_DEMO_MESSAGE,
   Tag,
   fetchJson,
 } from "../components/camp/CampUI";
@@ -175,6 +176,12 @@ export default function OptimizedDemoPage() {
 
       {errorMessage ? <ErrorState message={errorMessage} onRetry={() => selectedQueryId ? loadRecommendations(selectedQueryId) : loadQueries()} /> : null}
       {isLoadingQueries ? <LoadingState title="추천 조건을 준비하고 있어요" /> : null}
+      {!isLoadingQueries && !errorMessage && recommendationData?.static_fallback ? (
+        <div className="demoNotice" role="status">
+          <Tag tone="amber">정적 데모 모드</Tag>
+          <span>{recommendationData.fallback_message || STATIC_DEMO_MESSAGE}</span>
+        </div>
+      ) : null}
 
       {!isLoadingQueries && !errorMessage ? (
         <div className="recommendationWorkspace">

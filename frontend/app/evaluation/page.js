@@ -13,6 +13,7 @@ import {
   MiniChart,
   MissingPlaceTypeChart,
   Section,
+  STATIC_DEMO_MESSAGE,
   Tag,
   fetchJson,
   formatMetric,
@@ -158,6 +159,12 @@ export default function EvaluationDashboardPage() {
 
       {errorMessage ? <ErrorState message={errorMessage} onRetry={loadDashboard} /> : null}
       {isLoading ? <LoadingState title="평가 대시보드를 불러오는 중입니다" /> : null}
+      {!isLoading && !errorMessage && (evaluation?.static_fallback || coverage?.static_fallback) ? (
+        <div className="demoNotice" role="status">
+          <Tag tone="amber">정적 데모 모드</Tag>
+          <span>{evaluation?.fallback_message || coverage?.fallback_message || STATIC_DEMO_MESSAGE}</span>
+        </div>
+      ) : null}
 
       {!isLoading && !errorMessage ? (
         <>

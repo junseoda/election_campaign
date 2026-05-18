@@ -1,0 +1,1321 @@
+{
+  "static_fallback": true,
+  "fallback_message": "실시간 API 서버에 연결할 수 없어 저장된 평가 결과를 표시합니다.",
+  "source_files": {
+    "model_comparison": "output/experiments_optimized/model_comparison_optimized.csv",
+    "baseline_summary": "output/evaluation_result_summary.csv",
+    "optimized_summary": "output/experiments_optimized/optimized_proposed/evaluation_result_summary.csv",
+    "gold_summary": "output/gold_set_summary.json",
+    "feature_contribution": "output/experiments_optimized/optimized_proposed/feature_contribution_summary.csv"
+  },
+  "evaluation_dashboard": {
+    "static_fallback": true,
+    "model_comparison": [
+      {
+        "model_name": "baseline",
+        "P@1": 0.02857142857142857,
+        "P@3": 0.009523809523809523,
+        "P@5": 0.02,
+        "P@10": 0.027142857142857146,
+        "R@1": 0.02857142857142857,
+        "R@3": 0.02857142857142857,
+        "R@5": 0.1,
+        "R@10": 0.2714285714285714,
+        "NDCG@1": 0.02857142857142857,
+        "NDCG@3": 0.02857142857142857,
+        "NDCG@5": 0.05682982552873656,
+        "NDCG@10": 0.11047331575897554,
+        "optimization_score": 0.07685613670611763
+      },
+      {
+        "model_name": "district_weighted",
+        "P@1": 0.04285714285714286,
+        "P@3": 0.02857142857142857,
+        "P@5": 0.037142857142857144,
+        "P@10": 0.027142857142857146,
+        "R@1": 0.04285714285714286,
+        "R@3": 0.08571428571428572,
+        "R@5": 0.18571428571428572,
+        "R@10": 0.2714285714285714,
+        "NDCG@1": 0.04285714285714286,
+        "NDCG@3": 0.06428571428571428,
+        "NDCG@5": 0.10484915575940494,
+        "NDCG@10": 0.13335738309272524,
+        "optimization_score": 0.09396079836816812
+      },
+      {
+        "model_name": "place_type_weighted",
+        "P@1": 0.02857142857142857,
+        "P@3": 0.009523809523809523,
+        "P@5": 0.02,
+        "P@10": 0.027142857142857146,
+        "R@1": 0.02857142857142857,
+        "R@3": 0.02857142857142857,
+        "R@5": 0.1,
+        "R@10": 0.2714285714285714,
+        "NDCG@1": 0.02857142857142857,
+        "NDCG@3": 0.02857142857142857,
+        "NDCG@5": 0.05682982552873656,
+        "NDCG@10": 0.11047331575897554,
+        "optimization_score": 0.07685613670611763
+      },
+      {
+        "model_name": "time_weighted",
+        "P@1": 0.02857142857142857,
+        "P@3": 0.009523809523809523,
+        "P@5": 0.02,
+        "P@10": 0.027142857142857146,
+        "R@1": 0.02857142857142857,
+        "R@3": 0.02857142857142857,
+        "R@5": 0.1,
+        "R@10": 0.2714285714285714,
+        "NDCG@1": 0.02857142857142857,
+        "NDCG@3": 0.02857142857142857,
+        "NDCG@5": 0.05682982552873656,
+        "NDCG@10": 0.11047331575897554,
+        "optimization_score": 0.07685613670611763
+      },
+      {
+        "model_name": "proposed",
+        "P@1": 0.04285714285714286,
+        "P@3": 0.02857142857142857,
+        "P@5": 0.037142857142857144,
+        "P@10": 0.027142857142857146,
+        "R@1": 0.04285714285714286,
+        "R@3": 0.08571428571428572,
+        "R@5": 0.18571428571428572,
+        "R@10": 0.2714285714285714,
+        "NDCG@1": 0.04285714285714286,
+        "NDCG@3": 0.06428571428571428,
+        "NDCG@5": 0.10484915575940494,
+        "NDCG@10": 0.13335738309272524,
+        "optimization_score": 0.09396079836816812
+      },
+      {
+        "model_name": "optimized_proposed",
+        "P@1": 0.07142857142857142,
+        "P@3": 0.05714285714285714,
+        "P@5": 0.045714285714285714,
+        "P@10": 0.027142857142857146,
+        "R@1": 0.07142857142857142,
+        "R@3": 0.17142857142857143,
+        "R@5": 0.22857142857142856,
+        "R@10": 0.2714285714285714,
+        "NDCG@1": 0.07142857142857142,
+        "NDCG@3": 0.13078069668367553,
+        "NDCG@5": 0.15351262496620435,
+        "NDCG@10": 0.1681966142662297,
+        "optimization_score": 0.11986881499318039
+      }
+    ],
+    "optimized_metrics": {
+      "model_name": "optimized_proposed",
+      "P@1": 0.07142857142857142,
+      "P@3": 0.05714285714285714,
+      "P@5": 0.045714285714285714,
+      "P@10": 0.027142857142857146,
+      "R@1": 0.07142857142857142,
+      "R@3": 0.17142857142857143,
+      "R@5": 0.22857142857142856,
+      "R@10": 0.2714285714285714,
+      "NDCG@1": 0.07142857142857142,
+      "NDCG@3": 0.13078069668367553,
+      "NDCG@5": 0.15351262496620435,
+      "NDCG@10": 0.1681966142662297,
+      "optimization_score": 0.11986881499318039
+    },
+    "best_weights": {
+      "selection_basis": "highest train optimization_score",
+      "optimization_formula": "0.35*NDCG@10 + 0.25*P@1 + 0.20*P@3 + 0.10*P@5 + 0.10*R@10",
+      "search_mode": "random",
+      "n_trials_requested": 300,
+      "n_trials_evaluated": 303,
+      "random_state": 42,
+      "train_query_count": 49,
+      "validation_query_count": 21,
+      "best_weights": {
+        "baseline_weight": 1,
+        "district_weight": 0.5,
+        "place_type_weight": 0.3,
+        "time_weight": 0.1,
+        "context_weight": 0.2,
+        "target_weight": 0.05,
+        "rank_weight": 0.05
+      },
+      "best_by_ndcg10": {
+        "trial_id": 12,
+        "weights": {
+          "baseline_weight": 1,
+          "district_weight": 0.5,
+          "place_type_weight": 0.3,
+          "time_weight": 0.1,
+          "context_weight": 0.2,
+          "target_weight": 0.05,
+          "rank_weight": 0.05
+        },
+        "train_NDCG@10": 0.18010824244401402
+      },
+      "best_by_p1": {
+        "trial_id": 9,
+        "weights": {
+          "baseline_weight": 1,
+          "district_weight": 0.3,
+          "place_type_weight": 0.1,
+          "time_weight": 0,
+          "context_weight": 0.2,
+          "target_weight": 0.1,
+          "rank_weight": 0.05
+        },
+        "train_P@1": 0.08163265306122448
+      },
+      "best_by_p3": {
+        "trial_id": 4,
+        "weights": {
+          "baseline_weight": 1,
+          "district_weight": 0.5,
+          "place_type_weight": 0.1,
+          "time_weight": 0.1,
+          "context_weight": 0.1,
+          "target_weight": 0.05,
+          "rank_weight": 0
+        },
+        "train_P@3": 0.061224489795918366
+      },
+      "best_by_optimization_score": {
+        "trial_id": 12,
+        "weights": {
+          "baseline_weight": 1,
+          "district_weight": 0.5,
+          "place_type_weight": 0.3,
+          "time_weight": 0.1,
+          "context_weight": 0.2,
+          "target_weight": 0.05,
+          "rank_weight": 0.05
+        },
+        "train_metrics": {
+          "P@1": 0.08163265306122448,
+          "R@1": 0.08163265306122448,
+          "NDCG@1": 0.08163265306122448,
+          "P@3": 0.061224489795918366,
+          "R@3": 0.1836734693877551,
+          "NDCG@3": 0.1433412043731802,
+          "P@5": 0.04489795918367347,
+          "R@5": 0.22448979591836735,
+          "NDCG@5": 0.15913111487254925,
+          "P@10": 0.028571428571428574,
+          "R@10": 0.2857142857142857,
+          "NDCG@10": 0.18010824244401402
+        },
+        "validation_metrics": {
+          "P@1": 0.047619047619047616,
+          "R@1": 0.047619047619047616,
+          "NDCG@1": 0.047619047619047616,
+          "P@3": 0.047619047619047616,
+          "R@3": 0.14285714285714285,
+          "NDCG@3": 0.10147284540816466,
+          "P@5": 0.047619047619047616,
+          "R@5": 0.23809523809523808,
+          "NDCG@5": 0.14040281518473297,
+          "P@10": 0.023809523809523808,
+          "R@10": 0.23809523809523808,
+          "NDCG@10": 0.14040281518473297
+        },
+        "full_metrics": {
+          "P@1": 0.07142857142857142,
+          "R@1": 0.07142857142857142,
+          "NDCG@1": 0.07142857142857142,
+          "P@3": 0.05714285714285714,
+          "R@3": 0.17142857142857143,
+          "NDCG@3": 0.13078069668367553,
+          "P@5": 0.045714285714285714,
+          "R@5": 0.22857142857142856,
+          "NDCG@5": 0.15351262496620435,
+          "P@10": 0.027142857142857146,
+          "R@10": 0.2714285714285714,
+          "NDCG@10": 0.1681966142662297
+        },
+        "train_optimization_score": 0.12875217056969063,
+        "validation_optimization_score": 0.09914098531465652,
+        "full_optimization_score": 0.11986881499318039
+      }
+    },
+    "gold_summary": {
+      "total_rows": 186,
+      "strong_place_rows": 70,
+      "date_range": {
+        "start": "2026-03-09",
+        "end": "2026-05-16"
+      },
+      "strong_positive_by_district": {
+        "영등포구": 6,
+        "송파구": 6,
+        "노원구": 5,
+        "중구": 4,
+        "성동구": 4,
+        "양천구": 4,
+        "마포구": 3,
+        "종로구": 3,
+        "강서구": 3,
+        "성북구": 3,
+        "서초구": 3,
+        "동작구": 3,
+        "광진구": 3,
+        "강동구": 3,
+        "중랑구": 3,
+        "관악구": 2,
+        "구로구": 2,
+        "서대문구": 2,
+        "동대문구": 2,
+        "광화문": 1,
+        "강북구": 1,
+        "은평구": 1,
+        "금천구": 1,
+        "용산구": 1,
+        "강남구": 1
+      },
+      "strong_positive_by_place_type": {
+        "전통시장": 21,
+        "공원": 11,
+        "골목상권": 10,
+        "체육시설": 6,
+        "복지시설": 5,
+        "정책현장": 5,
+        "노동현장": 4,
+        "교통거점": 3,
+        "재개발/도시개발현장": 3,
+        "어린이/가족시설": 1,
+        "종교시설": 1
+      },
+      "strong_positive_by_campaign_activity_type": {
+        "지역상권방문": 25,
+        "현장방문": 18,
+        "방문인사": 9,
+        "체육행사": 6,
+        "복지현장방문": 4,
+        "기념행사": 3,
+        "거리인사": 2,
+        "퇴근인사": 1,
+        "정책간담회": 1,
+        "종교행사": 1
+      }
+    },
+    "split_summaries": {
+      "train": [
+        {
+          "k": 1,
+          "precision_at_k": 0.08163265306122448,
+          "recall_at_k": 0.08163265306122448,
+          "ndcg_at_k": 0.08163265306122448,
+          "query_count": 49
+        },
+        {
+          "k": 3,
+          "precision_at_k": 0.061224489795918366,
+          "recall_at_k": 0.1836734693877551,
+          "ndcg_at_k": 0.1433412043731802,
+          "query_count": 49
+        },
+        {
+          "k": 5,
+          "precision_at_k": 0.04489795918367347,
+          "recall_at_k": 0.22448979591836735,
+          "ndcg_at_k": 0.15913111487254925,
+          "query_count": 49
+        },
+        {
+          "k": 10,
+          "precision_at_k": 0.028571428571428574,
+          "recall_at_k": 0.2857142857142857,
+          "ndcg_at_k": 0.18010824244401402,
+          "query_count": 49
+        }
+      ],
+      "validation": [
+        {
+          "k": 1,
+          "precision_at_k": 0.047619047619047616,
+          "recall_at_k": 0.047619047619047616,
+          "ndcg_at_k": 0.047619047619047616,
+          "query_count": 21
+        },
+        {
+          "k": 3,
+          "precision_at_k": 0.047619047619047616,
+          "recall_at_k": 0.14285714285714285,
+          "ndcg_at_k": 0.10147284540816466,
+          "query_count": 21
+        },
+        {
+          "k": 5,
+          "precision_at_k": 0.047619047619047616,
+          "recall_at_k": 0.23809523809523808,
+          "ndcg_at_k": 0.14040281518473297,
+          "query_count": 21
+        },
+        {
+          "k": 10,
+          "precision_at_k": 0.023809523809523808,
+          "recall_at_k": 0.23809523809523808,
+          "ndcg_at_k": 0.14040281518473297,
+          "query_count": 21
+        }
+      ],
+      "full": [
+        {
+          "k": 1,
+          "precision_at_k": 0.07142857142857142,
+          "recall_at_k": 0.07142857142857142,
+          "ndcg_at_k": 0.07142857142857142,
+          "query_count": 70
+        },
+        {
+          "k": 3,
+          "precision_at_k": 0.05714285714285714,
+          "recall_at_k": 0.17142857142857143,
+          "ndcg_at_k": 0.13078069668367553,
+          "query_count": 70
+        },
+        {
+          "k": 5,
+          "precision_at_k": 0.045714285714285714,
+          "recall_at_k": 0.22857142857142856,
+          "ndcg_at_k": 0.15351262496620435,
+          "query_count": 70
+        },
+        {
+          "k": 10,
+          "precision_at_k": 0.027142857142857146,
+          "recall_at_k": 0.2714285714285714,
+          "ndcg_at_k": 0.1681966142662297,
+          "query_count": 70
+        }
+      ]
+    },
+    "feature_contribution": [
+      {
+        "feature_name": "district_bonus",
+        "non_zero_count": 531,
+        "non_zero_ratio": "0.7585714285714286",
+        "mean_bonus": 0.5928571428571429,
+        "max_bonus": 1,
+        "total_bonus": "415.0",
+        "correlation_with_hit": "0.1697359475720466",
+        "comment": "hit 후보와 양의 상관을 보여 성능 개선 근거로 설명 가능"
+      },
+      {
+        "feature_name": "place_type_bonus",
+        "non_zero_count": 669,
+        "non_zero_ratio": "0.9557142857142857",
+        "mean_bonus": 0.9373571428571428,
+        "max_bonus": 1,
+        "total_bonus": "656.15",
+        "correlation_with_hit": "0.04719869436024004",
+        "comment": "활성화되지만 단독 hit 상관은 제한적"
+      },
+      {
+        "feature_name": "time_bonus",
+        "non_zero_count": 700,
+        "non_zero_ratio": "1.0",
+        "mean_bonus": 0.6144285714285714,
+        "max_bonus": 1,
+        "total_bonus": "430.09999999999997",
+        "correlation_with_hit": "0.10871754045960144",
+        "comment": "hit 후보와 양의 상관을 보여 성능 개선 근거로 설명 가능"
+      },
+      {
+        "feature_name": "context_bonus",
+        "non_zero_count": 669,
+        "non_zero_ratio": "0.9557142857142857",
+        "mean_bonus": 0.3532571428571429,
+        "max_bonus": 0.61,
+        "total_bonus": "247.28000000000003",
+        "correlation_with_hit": "0.08190312338019196",
+        "comment": "hit 후보와 양의 상관을 보여 성능 개선 근거로 설명 가능"
+      },
+      {
+        "feature_name": "target_bonus",
+        "non_zero_count": 622,
+        "non_zero_ratio": "0.8885714285714286",
+        "mean_bonus": 0.6644285714285715,
+        "max_bonus": 1,
+        "total_bonus": "465.1",
+        "correlation_with_hit": "0.05901546929551105",
+        "comment": "hit 후보와 양의 상관을 보여 성능 개선 근거로 설명 가능"
+      },
+      {
+        "feature_name": "rank_bonus",
+        "non_zero_count": 700,
+        "non_zero_ratio": "1.0",
+        "mean_bonus": 0.8663849528571427,
+        "max_bonus": 1,
+        "total_bonus": "606.4694669999999",
+        "correlation_with_hit": "0.02086138011302588",
+        "comment": "활성화되지만 단독 hit 상관은 제한적"
+      }
+    ],
+    "fallback_message": "실시간 API 서버에 연결할 수 없어 저장된 평가 결과를 표시합니다."
+  },
+  "coverage_dashboard": {
+    "static_fallback": true,
+    "source_files": {
+      "raw_candidate_coverage": "output/experiments_optimized/raw_candidate_coverage.csv",
+      "raw_baseline_recommendations": "output/raw_baseline_recommendations.csv",
+      "candidate_generation_diagnosis": "output/experiments_optimized/candidate_generation_diagnosis.csv",
+      "missing_gold_by_place_type": "output/experiments_optimized/missing_gold_by_place_type.csv",
+      "missing_gold_by_district": "output/experiments_optimized/missing_gold_by_district.csv",
+      "hit_vs_miss_summary": "output/experiments_optimized/hit_vs_miss_summary.csv"
+    },
+    "summary": {
+      "total_queries": 70,
+      "raw_covered_count": 19,
+      "raw_missing_count": 51,
+      "raw_candidate_row_count": 2871,
+      "raw_candidate_recall_at_50": 0.2714285714285714,
+      "optimized_hit_at_10_count": 19,
+      "optimized_hit_at_10_rate": 0.2714285714285714
+    },
+    "diagnosis": [
+      {
+        "diagnosis_category": "overall",
+        "metric": "total_queries",
+        "value": "70",
+        "ratio": "1.0",
+        "interpretation": "strong positive Gold query 전체 수",
+        "recommendation": "동일 query set을 유지해 모델별 비교 재현성 확보"
+      },
+      {
+        "diagnosis_category": "overall",
+        "metric": "raw_candidate_missing_queries",
+        "value": "51",
+        "ratio": "0.7285714285714285",
+        "interpretation": "정답 장소가 raw Top50 후보군에 없어 reranking으로 맞출 수 없는 query",
+        "recommendation": "candidate generation 단계의 장소 소스 확장과 alias 정규화가 우선 필요"
+      },
+      {
+        "diagnosis_category": "overall",
+        "metric": "raw_candidate_recall_at_50",
+        "value": "19",
+        "ratio": "0.2714285714285714",
+        "interpretation": "raw 후보군 Top50 안에 정답 장소가 존재하는 비율",
+        "recommendation": "R@10 상한을 높이려면 raw recall@50 자체를 개선해야 함"
+      },
+      {
+        "diagnosis_category": "overall",
+        "metric": "optimized_hit_at_10",
+        "value": "19",
+        "ratio": "0.2714285714285714",
+        "interpretation": "optimized reranking 후 Top10 hit 수",
+        "recommendation": "현재 covered query는 모두 Top10에 진입해 reranking보다 후보 생성이 병목"
+      },
+      {
+        "diagnosis_category": "missing_by_campaign_activity_type",
+        "metric": "현장방문",
+        "value": "18",
+        "ratio": "1.0",
+        "interpretation": "현장방문 유형에서 raw 후보 누락이 발생",
+        "recommendation": "일정 유형별 전용 후보 source를 추가하고 장소명 alias를 보강"
+      },
+      {
+        "diagnosis_category": "missing_by_campaign_activity_type",
+        "metric": "지역상권방문",
+        "value": "8",
+        "ratio": "0.32",
+        "interpretation": "지역상권방문 유형에서 raw 후보 누락이 발생",
+        "recommendation": "일정 유형별 전용 후보 source를 추가하고 장소명 alias를 보강"
+      },
+      {
+        "diagnosis_category": "missing_by_campaign_activity_type",
+        "metric": "방문인사",
+        "value": "8",
+        "ratio": "0.8888888888888888",
+        "interpretation": "방문인사 유형에서 raw 후보 누락이 발생",
+        "recommendation": "일정 유형별 전용 후보 source를 추가하고 장소명 alias를 보강"
+      },
+      {
+        "diagnosis_category": "missing_by_campaign_activity_type",
+        "metric": "체육행사",
+        "value": "6",
+        "ratio": "1.0",
+        "interpretation": "체육행사 유형에서 raw 후보 누락이 발생",
+        "recommendation": "일정 유형별 전용 후보 source를 추가하고 장소명 alias를 보강"
+      },
+      {
+        "diagnosis_category": "missing_by_campaign_activity_type",
+        "metric": "복지현장방문",
+        "value": "4",
+        "ratio": "1.0",
+        "interpretation": "복지현장방문 유형에서 raw 후보 누락이 발생",
+        "recommendation": "일정 유형별 전용 후보 source를 추가하고 장소명 alias를 보강"
+      },
+      {
+        "diagnosis_category": "missing_by_campaign_activity_type",
+        "metric": "기념행사",
+        "value": "2",
+        "ratio": "0.6666666666666666",
+        "interpretation": "기념행사 유형에서 raw 후보 누락이 발생",
+        "recommendation": "일정 유형별 전용 후보 source를 추가하고 장소명 alias를 보강"
+      },
+      {
+        "diagnosis_category": "missing_by_campaign_activity_type",
+        "metric": "거리인사",
+        "value": "2",
+        "ratio": "1.0",
+        "interpretation": "거리인사 유형에서 raw 후보 누락이 발생",
+        "recommendation": "일정 유형별 전용 후보 source를 추가하고 장소명 alias를 보강"
+      },
+      {
+        "diagnosis_category": "missing_by_campaign_activity_type",
+        "metric": "정책간담회",
+        "value": "1",
+        "ratio": "1.0",
+        "interpretation": "정책간담회 유형에서 raw 후보 누락이 발생",
+        "recommendation": "일정 유형별 전용 후보 source를 추가하고 장소명 alias를 보강"
+      },
+      {
+        "diagnosis_category": "missing_by_campaign_activity_type",
+        "metric": "종교행사",
+        "value": "1",
+        "ratio": "1.0",
+        "interpretation": "종교행사 유형에서 raw 후보 누락이 발생",
+        "recommendation": "일정 유형별 전용 후보 source를 추가하고 장소명 alias를 보강"
+      },
+      {
+        "diagnosis_category": "missing_by_campaign_activity_type",
+        "metric": "퇴근인사",
+        "value": "1",
+        "ratio": "1.0",
+        "interpretation": "퇴근인사 유형에서 raw 후보 누락이 발생",
+        "recommendation": "일정 유형별 전용 후보 source를 추가하고 장소명 alias를 보강"
+      },
+      {
+        "diagnosis_category": "missing_by_place_type",
+        "metric": "공원",
+        "value": "11",
+        "ratio": "1.0",
+        "interpretation": "공원 장소 유형의 raw 후보 coverage 한계",
+        "recommendation": "공원뿐 아니라 하천 산책로, 산 정상/팔각정, 광장, 생활권 야외공간 POI를 확장"
+      },
+      {
+        "diagnosis_category": "missing_by_place_type",
+        "metric": "골목상권",
+        "value": "7",
+        "ratio": "0.7",
+        "interpretation": "골목상권 장소 유형의 raw 후보 coverage 한계",
+        "recommendation": "서울시 골목상권/상점가/먹자골목 데이터와 상권명 alias를 후보군에 추가"
+      },
+      {
+        "diagnosis_category": "missing_by_place_type",
+        "metric": "전통시장",
+        "value": "6",
+        "ratio": "0.2857142857142857",
+        "interpretation": "전통시장 장소 유형의 raw 후보 coverage 한계",
+        "recommendation": "전통시장 공식 목록에 시장 출입구/남문/북문, 통칭, 별칭을 확장하고 상권 POI alias table을 추가"
+      },
+      {
+        "diagnosis_category": "missing_by_place_type",
+        "metric": "체육시설",
+        "value": "6",
+        "ratio": "1.0",
+        "interpretation": "체육시설 장소 유형의 raw 후보 coverage 한계",
+        "recommendation": "공공체육시설, 학교/학생체육관, 생활체육 행사장 데이터를 별도 candidate source로 추가"
+      },
+      {
+        "diagnosis_category": "missing_by_place_type",
+        "metric": "복지시설",
+        "value": "5",
+        "ratio": "1.0",
+        "interpretation": "복지시설 장소 유형의 raw 후보 coverage 한계",
+        "recommendation": "노인복지시설 외에 종합사회복지관, 장애인복지관, 구립 복지시설 목록을 통합"
+      },
+      {
+        "diagnosis_category": "missing_by_place_type",
+        "metric": "정책현장",
+        "value": "5",
+        "ratio": "1.0",
+        "interpretation": "정책현장 장소 유형의 raw 후보 coverage 한계",
+        "recommendation": "정책 발표/민원 현장 후보로 공공시설, 도시문제 현장, 생활 SOC 데이터를 추가"
+      },
+      {
+        "diagnosis_category": "missing_by_place_type",
+        "metric": "노동현장",
+        "value": "4",
+        "ratio": "1.0",
+        "interpretation": "노동현장 장소 유형의 raw 후보 coverage 한계",
+        "recommendation": "노동조합, 산업단지, 사업장 밀집지, 근로자센터 후보군을 별도 구축"
+      },
+      {
+        "diagnosis_category": "missing_by_place_type",
+        "metric": "교통거점",
+        "value": "3",
+        "ratio": "1.0",
+        "interpretation": "교통거점 장소 유형의 raw 후보 coverage 한계",
+        "recommendation": "지하철역 외에 사거리, 광장, 주요 도로 결절점, 버스 환승거점 데이터를 추가"
+      },
+      {
+        "diagnosis_category": "missing_by_place_type",
+        "metric": "재개발/도시개발현장",
+        "value": "3",
+        "ratio": "1.0",
+        "interpretation": "재개발/도시개발현장 장소 유형의 raw 후보 coverage 한계",
+        "recommendation": "정비사업구역, 재개발/재건축 사업지, 도시개발 프로젝트 위치 데이터를 추가"
+      },
+      {
+        "diagnosis_category": "missing_by_place_type",
+        "metric": "종교시설",
+        "value": "1",
+        "ratio": "1.0",
+        "interpretation": "종교시설 장소 유형의 raw 후보 coverage 한계",
+        "recommendation": "종교시설 POI와 종교행사 장소 후보군을 별도 구축"
+      }
+    ],
+    "missing_by_place_type": [
+      {
+        "place_type": "공원",
+        "total_gold_count": 11,
+        "missing_count": 11,
+        "missing_ratio_among_group": 1,
+        "missing_ratio_among_missing": "0.21568627450980393",
+        "raw_coverage_count": "0",
+        "raw_coverage_rate": "0.0",
+        "hit_at_10_count": "0",
+        "hit_at_10_rate": 0,
+        "candidate_generation_gap": "공원뿐 아니라 하천 산책로, 산 정상/팔각정, 광장, 생활권 야외공간 POI를 확장"
+      },
+      {
+        "place_type": "골목상권",
+        "total_gold_count": 10,
+        "missing_count": 7,
+        "missing_ratio_among_group": 0.7,
+        "missing_ratio_among_missing": "0.13725490196078433",
+        "raw_coverage_count": "3",
+        "raw_coverage_rate": "0.3",
+        "hit_at_10_count": "3",
+        "hit_at_10_rate": 0.3,
+        "candidate_generation_gap": "서울시 골목상권/상점가/먹자골목 데이터와 상권명 alias를 후보군에 추가"
+      },
+      {
+        "place_type": "전통시장",
+        "total_gold_count": 21,
+        "missing_count": 6,
+        "missing_ratio_among_group": 0.2857142857142857,
+        "missing_ratio_among_missing": "0.11764705882352941",
+        "raw_coverage_count": "15",
+        "raw_coverage_rate": "0.7142857142857143",
+        "hit_at_10_count": "15",
+        "hit_at_10_rate": 0.7142857142857143,
+        "candidate_generation_gap": "전통시장 공식 목록에 시장 출입구/남문/북문, 통칭, 별칭을 확장하고 상권 POI alias table을 추가"
+      },
+      {
+        "place_type": "체육시설",
+        "total_gold_count": 6,
+        "missing_count": 6,
+        "missing_ratio_among_group": 1,
+        "missing_ratio_among_missing": "0.11764705882352941",
+        "raw_coverage_count": "0",
+        "raw_coverage_rate": "0.0",
+        "hit_at_10_count": "0",
+        "hit_at_10_rate": 0,
+        "candidate_generation_gap": "공공체육시설, 학교/학생체육관, 생활체육 행사장 데이터를 별도 candidate source로 추가"
+      },
+      {
+        "place_type": "복지시설",
+        "total_gold_count": 5,
+        "missing_count": 5,
+        "missing_ratio_among_group": 1,
+        "missing_ratio_among_missing": "0.09803921568627451",
+        "raw_coverage_count": "0",
+        "raw_coverage_rate": "0.0",
+        "hit_at_10_count": "0",
+        "hit_at_10_rate": 0,
+        "candidate_generation_gap": "노인복지시설 외에 종합사회복지관, 장애인복지관, 구립 복지시설 목록을 통합"
+      },
+      {
+        "place_type": "정책현장",
+        "total_gold_count": 5,
+        "missing_count": 5,
+        "missing_ratio_among_group": 1,
+        "missing_ratio_among_missing": "0.09803921568627451",
+        "raw_coverage_count": "0",
+        "raw_coverage_rate": "0.0",
+        "hit_at_10_count": "0",
+        "hit_at_10_rate": 0,
+        "candidate_generation_gap": "정책 발표/민원 현장 후보로 공공시설, 도시문제 현장, 생활 SOC 데이터를 추가"
+      },
+      {
+        "place_type": "노동현장",
+        "total_gold_count": 4,
+        "missing_count": 4,
+        "missing_ratio_among_group": 1,
+        "missing_ratio_among_missing": "0.0784313725490196",
+        "raw_coverage_count": "0",
+        "raw_coverage_rate": "0.0",
+        "hit_at_10_count": "0",
+        "hit_at_10_rate": 0,
+        "candidate_generation_gap": "노동조합, 산업단지, 사업장 밀집지, 근로자센터 후보군을 별도 구축"
+      },
+      {
+        "place_type": "교통거점",
+        "total_gold_count": 3,
+        "missing_count": 3,
+        "missing_ratio_among_group": 1,
+        "missing_ratio_among_missing": "0.058823529411764705",
+        "raw_coverage_count": "0",
+        "raw_coverage_rate": "0.0",
+        "hit_at_10_count": "0",
+        "hit_at_10_rate": 0,
+        "candidate_generation_gap": "지하철역 외에 사거리, 광장, 주요 도로 결절점, 버스 환승거점 데이터를 추가"
+      },
+      {
+        "place_type": "재개발/도시개발현장",
+        "total_gold_count": 3,
+        "missing_count": 3,
+        "missing_ratio_among_group": 1,
+        "missing_ratio_among_missing": "0.058823529411764705",
+        "raw_coverage_count": "0",
+        "raw_coverage_rate": "0.0",
+        "hit_at_10_count": "0",
+        "hit_at_10_rate": 0,
+        "candidate_generation_gap": "정비사업구역, 재개발/재건축 사업지, 도시개발 프로젝트 위치 데이터를 추가"
+      },
+      {
+        "place_type": "종교시설",
+        "total_gold_count": 1,
+        "missing_count": 1,
+        "missing_ratio_among_group": 1,
+        "missing_ratio_among_missing": "0.0196078431372549",
+        "raw_coverage_count": "0",
+        "raw_coverage_rate": "0.0",
+        "hit_at_10_count": "0",
+        "hit_at_10_rate": 0,
+        "candidate_generation_gap": "종교시설 POI와 종교행사 장소 후보군을 별도 구축"
+      },
+      {
+        "place_type": "어린이/가족시설",
+        "total_gold_count": 1,
+        "missing_count": 0,
+        "missing_ratio_among_group": 0,
+        "missing_ratio_among_missing": "0.0",
+        "raw_coverage_count": "1",
+        "raw_coverage_rate": "1.0",
+        "hit_at_10_count": "1",
+        "hit_at_10_rate": 1,
+        "candidate_generation_gap": "어린이공원, 키즈시설, 가족센터, 보육/돌봄시설 후보군을 추가"
+      }
+    ],
+    "missing_by_district": [
+      {
+        "district": "송파구",
+        "total_gold_count": 6,
+        "missing_count": 5,
+        "missing_ratio_among_group": 0.8333333333333334,
+        "missing_ratio_among_missing": "0.09803921568627451",
+        "raw_coverage_count": "1",
+        "raw_coverage_rate": "0.16666666666666666",
+        "hit_at_10_count": "1",
+        "hit_at_10_rate": 0.16666666666666666,
+        "diagnosis": "후보군 coverage 취약 자치구"
+      },
+      {
+        "district": "영등포구",
+        "total_gold_count": 6,
+        "missing_count": 4,
+        "missing_ratio_among_group": 0.6666666666666666,
+        "missing_ratio_among_missing": "0.0784313725490196",
+        "raw_coverage_count": "2",
+        "raw_coverage_rate": "0.3333333333333333",
+        "hit_at_10_count": "2",
+        "hit_at_10_rate": 0.3333333333333333,
+        "diagnosis": "일부 장소 유형 보강 필요"
+      },
+      {
+        "district": "노원구",
+        "total_gold_count": 5,
+        "missing_count": 4,
+        "missing_ratio_among_group": 0.8,
+        "missing_ratio_among_missing": "0.0784313725490196",
+        "raw_coverage_count": "1",
+        "raw_coverage_rate": "0.2",
+        "hit_at_10_count": "1",
+        "hit_at_10_rate": 0.2,
+        "diagnosis": "후보군 coverage 취약 자치구"
+      },
+      {
+        "district": "양천구",
+        "total_gold_count": 4,
+        "missing_count": 4,
+        "missing_ratio_among_group": 1,
+        "missing_ratio_among_missing": "0.0784313725490196",
+        "raw_coverage_count": "0",
+        "raw_coverage_rate": "0.0",
+        "hit_at_10_count": "0",
+        "hit_at_10_rate": 0,
+        "diagnosis": "후보군 coverage 취약 자치구"
+      },
+      {
+        "district": "성동구",
+        "total_gold_count": 4,
+        "missing_count": 3,
+        "missing_ratio_among_group": 0.75,
+        "missing_ratio_among_missing": "0.058823529411764705",
+        "raw_coverage_count": "1",
+        "raw_coverage_rate": "0.25",
+        "hit_at_10_count": "1",
+        "hit_at_10_rate": 0.25,
+        "diagnosis": "후보군 coverage 취약 자치구"
+      },
+      {
+        "district": "중구",
+        "total_gold_count": 4,
+        "missing_count": 3,
+        "missing_ratio_among_group": 0.75,
+        "missing_ratio_among_missing": "0.058823529411764705",
+        "raw_coverage_count": "1",
+        "raw_coverage_rate": "0.25",
+        "hit_at_10_count": "1",
+        "hit_at_10_rate": 0.25,
+        "diagnosis": "후보군 coverage 취약 자치구"
+      },
+      {
+        "district": "강동구",
+        "total_gold_count": 3,
+        "missing_count": 3,
+        "missing_ratio_among_group": 1,
+        "missing_ratio_among_missing": "0.058823529411764705",
+        "raw_coverage_count": "0",
+        "raw_coverage_rate": "0.0",
+        "hit_at_10_count": "0",
+        "hit_at_10_rate": 0,
+        "diagnosis": "후보군 coverage 취약 자치구"
+      },
+      {
+        "district": "서초구",
+        "total_gold_count": 3,
+        "missing_count": 3,
+        "missing_ratio_among_group": 1,
+        "missing_ratio_among_missing": "0.058823529411764705",
+        "raw_coverage_count": "0",
+        "raw_coverage_rate": "0.0",
+        "hit_at_10_count": "0",
+        "hit_at_10_rate": 0,
+        "diagnosis": "후보군 coverage 취약 자치구"
+      },
+      {
+        "district": "성북구",
+        "total_gold_count": 3,
+        "missing_count": 3,
+        "missing_ratio_among_group": 1,
+        "missing_ratio_among_missing": "0.058823529411764705",
+        "raw_coverage_count": "0",
+        "raw_coverage_rate": "0.0",
+        "hit_at_10_count": "0",
+        "hit_at_10_rate": 0,
+        "diagnosis": "후보군 coverage 취약 자치구"
+      },
+      {
+        "district": "중랑구",
+        "total_gold_count": 3,
+        "missing_count": 3,
+        "missing_ratio_among_group": 1,
+        "missing_ratio_among_missing": "0.058823529411764705",
+        "raw_coverage_count": "0",
+        "raw_coverage_rate": "0.0",
+        "hit_at_10_count": "0",
+        "hit_at_10_rate": 0,
+        "diagnosis": "후보군 coverage 취약 자치구"
+      },
+      {
+        "district": "마포구",
+        "total_gold_count": 3,
+        "missing_count": 2,
+        "missing_ratio_among_group": 0.6666666666666666,
+        "missing_ratio_among_missing": "0.0392156862745098",
+        "raw_coverage_count": "1",
+        "raw_coverage_rate": "0.3333333333333333",
+        "hit_at_10_count": "1",
+        "hit_at_10_rate": 0.3333333333333333,
+        "diagnosis": "일부 장소 유형 보강 필요"
+      },
+      {
+        "district": "종로구",
+        "total_gold_count": 3,
+        "missing_count": 2,
+        "missing_ratio_among_group": 0.6666666666666666,
+        "missing_ratio_among_missing": "0.0392156862745098",
+        "raw_coverage_count": "1",
+        "raw_coverage_rate": "0.3333333333333333",
+        "hit_at_10_count": "1",
+        "hit_at_10_rate": 0.3333333333333333,
+        "diagnosis": "일부 장소 유형 보강 필요"
+      },
+      {
+        "district": "동대문구",
+        "total_gold_count": 2,
+        "missing_count": 2,
+        "missing_ratio_among_group": 1,
+        "missing_ratio_among_missing": "0.0392156862745098",
+        "raw_coverage_count": "0",
+        "raw_coverage_rate": "0.0",
+        "hit_at_10_count": "0",
+        "hit_at_10_rate": 0,
+        "diagnosis": "후보군 coverage 취약 자치구"
+      },
+      {
+        "district": "강서구",
+        "total_gold_count": 3,
+        "missing_count": 1,
+        "missing_ratio_among_group": 0.3333333333333333,
+        "missing_ratio_among_missing": "0.0196078431372549",
+        "raw_coverage_count": "2",
+        "raw_coverage_rate": "0.6666666666666666",
+        "hit_at_10_count": "2",
+        "hit_at_10_rate": 0.6666666666666666,
+        "diagnosis": "일부 장소 유형 보강 필요"
+      },
+      {
+        "district": "광진구",
+        "total_gold_count": 3,
+        "missing_count": 1,
+        "missing_ratio_among_group": 0.3333333333333333,
+        "missing_ratio_among_missing": "0.0196078431372549",
+        "raw_coverage_count": "2",
+        "raw_coverage_rate": "0.6666666666666666",
+        "hit_at_10_count": "2",
+        "hit_at_10_rate": 0.6666666666666666,
+        "diagnosis": "일부 장소 유형 보강 필요"
+      },
+      {
+        "district": "관악구",
+        "total_gold_count": 2,
+        "missing_count": 1,
+        "missing_ratio_among_group": 0.5,
+        "missing_ratio_among_missing": "0.0196078431372549",
+        "raw_coverage_count": "1",
+        "raw_coverage_rate": "0.5",
+        "hit_at_10_count": "1",
+        "hit_at_10_rate": 0.5,
+        "diagnosis": "일부 장소 유형 보강 필요"
+      },
+      {
+        "district": "구로구",
+        "total_gold_count": 2,
+        "missing_count": 1,
+        "missing_ratio_among_group": 0.5,
+        "missing_ratio_among_missing": "0.0196078431372549",
+        "raw_coverage_count": "1",
+        "raw_coverage_rate": "0.5",
+        "hit_at_10_count": "1",
+        "hit_at_10_rate": 0.5,
+        "diagnosis": "일부 장소 유형 보강 필요"
+      },
+      {
+        "district": "서대문구",
+        "total_gold_count": 2,
+        "missing_count": 1,
+        "missing_ratio_among_group": 0.5,
+        "missing_ratio_among_missing": "0.0196078431372549",
+        "raw_coverage_count": "1",
+        "raw_coverage_rate": "0.5",
+        "hit_at_10_count": "1",
+        "hit_at_10_rate": 0.5,
+        "diagnosis": "일부 장소 유형 보강 필요"
+      },
+      {
+        "district": "강남구",
+        "total_gold_count": 1,
+        "missing_count": 1,
+        "missing_ratio_among_group": 1,
+        "missing_ratio_among_missing": "0.0196078431372549",
+        "raw_coverage_count": "0",
+        "raw_coverage_rate": "0.0",
+        "hit_at_10_count": "0",
+        "hit_at_10_rate": 0,
+        "diagnosis": "후보군 coverage 취약 자치구"
+      },
+      {
+        "district": "광화문",
+        "total_gold_count": 1,
+        "missing_count": 1,
+        "missing_ratio_among_group": 1,
+        "missing_ratio_among_missing": "0.0196078431372549",
+        "raw_coverage_count": "0",
+        "raw_coverage_rate": "0.0",
+        "hit_at_10_count": "0",
+        "hit_at_10_rate": 0,
+        "diagnosis": "후보군 coverage 취약 자치구"
+      },
+      {
+        "district": "금천구",
+        "total_gold_count": 1,
+        "missing_count": 1,
+        "missing_ratio_among_group": 1,
+        "missing_ratio_among_missing": "0.0196078431372549",
+        "raw_coverage_count": "0",
+        "raw_coverage_rate": "0.0",
+        "hit_at_10_count": "0",
+        "hit_at_10_rate": 0,
+        "diagnosis": "후보군 coverage 취약 자치구"
+      },
+      {
+        "district": "용산구",
+        "total_gold_count": 1,
+        "missing_count": 1,
+        "missing_ratio_among_group": 1,
+        "missing_ratio_among_missing": "0.0196078431372549",
+        "raw_coverage_count": "0",
+        "raw_coverage_rate": "0.0",
+        "hit_at_10_count": "0",
+        "hit_at_10_rate": 0,
+        "diagnosis": "후보군 coverage 취약 자치구"
+      },
+      {
+        "district": "은평구",
+        "total_gold_count": 1,
+        "missing_count": 1,
+        "missing_ratio_among_group": 1,
+        "missing_ratio_among_missing": "0.0196078431372549",
+        "raw_coverage_count": "0",
+        "raw_coverage_rate": "0.0",
+        "hit_at_10_count": "0",
+        "hit_at_10_rate": 0,
+        "diagnosis": "후보군 coverage 취약 자치구"
+      },
+      {
+        "district": "동작구",
+        "total_gold_count": 3,
+        "missing_count": 0,
+        "missing_ratio_among_group": 0,
+        "missing_ratio_among_missing": "0.0",
+        "raw_coverage_count": "3",
+        "raw_coverage_rate": "1.0",
+        "hit_at_10_count": "3",
+        "hit_at_10_rate": 1,
+        "diagnosis": "일부 장소 유형 보강 필요"
+      },
+      {
+        "district": "강북구",
+        "total_gold_count": 1,
+        "missing_count": 0,
+        "missing_ratio_among_group": 0,
+        "missing_ratio_among_missing": "0.0",
+        "raw_coverage_count": "1",
+        "raw_coverage_rate": "1.0",
+        "hit_at_10_count": "1",
+        "hit_at_10_rate": 1,
+        "diagnosis": "일부 장소 유형 보강 필요"
+      }
+    ],
+    "missing_by_campaign_activity_type": [
+      {
+        "group_level": "campaign_activity_type",
+        "group_value": "현장방문",
+        "query_count": 18,
+        "raw_covered_count": "0",
+        "raw_missing_count": 18,
+        "raw_coverage_rate": "0.0",
+        "hit_at_1_count": "0",
+        "hit_at_3_count": "0",
+        "hit_at_5_count": "0",
+        "hit_at_10_count": "0",
+        "hit_at_10_rate": 0,
+        "avg_raw_candidate_count": "42.05555555555556",
+        "diagnosis": "candidate generation 병목이 큼"
+      },
+      {
+        "group_level": "campaign_activity_type",
+        "group_value": "지역상권방문",
+        "query_count": 25,
+        "raw_covered_count": "17",
+        "raw_missing_count": 8,
+        "raw_coverage_rate": "0.68",
+        "hit_at_1_count": "3",
+        "hit_at_3_count": "10",
+        "hit_at_5_count": "14",
+        "hit_at_10_count": "17",
+        "hit_at_10_rate": 0.68,
+        "avg_raw_candidate_count": "41.8",
+        "diagnosis": "후보군 coverage와 reranking이 상대적으로 양호"
+      },
+      {
+        "group_level": "campaign_activity_type",
+        "group_value": "방문인사",
+        "query_count": 9,
+        "raw_covered_count": "1",
+        "raw_missing_count": 8,
+        "raw_coverage_rate": "0.1111111111111111",
+        "hit_at_1_count": "1",
+        "hit_at_3_count": "1",
+        "hit_at_5_count": "1",
+        "hit_at_10_count": "1",
+        "hit_at_10_rate": 0.1111111111111111,
+        "avg_raw_candidate_count": "42.44444444444444",
+        "diagnosis": "candidate generation 병목이 큼"
+      },
+      {
+        "group_level": "campaign_activity_type",
+        "group_value": "체육행사",
+        "query_count": 6,
+        "raw_covered_count": "0",
+        "raw_missing_count": 6,
+        "raw_coverage_rate": "0.0",
+        "hit_at_1_count": "0",
+        "hit_at_3_count": "0",
+        "hit_at_5_count": "0",
+        "hit_at_10_count": "0",
+        "hit_at_10_rate": 0,
+        "avg_raw_candidate_count": "38.833333333333336",
+        "diagnosis": "candidate generation 병목이 큼"
+      },
+      {
+        "group_level": "campaign_activity_type",
+        "group_value": "복지현장방문",
+        "query_count": 4,
+        "raw_covered_count": "0",
+        "raw_missing_count": 4,
+        "raw_coverage_rate": "0.0",
+        "hit_at_1_count": "0",
+        "hit_at_3_count": "0",
+        "hit_at_5_count": "0",
+        "hit_at_10_count": "0",
+        "hit_at_10_rate": 0,
+        "avg_raw_candidate_count": "21.25",
+        "diagnosis": "candidate generation 병목이 큼"
+      },
+      {
+        "group_level": "campaign_activity_type",
+        "group_value": "기념행사",
+        "query_count": 3,
+        "raw_covered_count": "1",
+        "raw_missing_count": 2,
+        "raw_coverage_rate": "0.3333333333333333",
+        "hit_at_1_count": "1",
+        "hit_at_3_count": "1",
+        "hit_at_5_count": "1",
+        "hit_at_10_count": "1",
+        "hit_at_10_rate": 0.3333333333333333,
+        "avg_raw_candidate_count": "39.666666666666664",
+        "diagnosis": "후보군 coverage와 reranking이 상대적으로 양호"
+      },
+      {
+        "group_level": "campaign_activity_type",
+        "group_value": "거리인사",
+        "query_count": 2,
+        "raw_covered_count": "0",
+        "raw_missing_count": 2,
+        "raw_coverage_rate": "0.0",
+        "hit_at_1_count": "0",
+        "hit_at_3_count": "0",
+        "hit_at_5_count": "0",
+        "hit_at_10_count": "0",
+        "hit_at_10_rate": 0,
+        "avg_raw_candidate_count": "50.0",
+        "diagnosis": "candidate generation 병목이 큼"
+      },
+      {
+        "group_level": "campaign_activity_type",
+        "group_value": "정책간담회",
+        "query_count": 1,
+        "raw_covered_count": "0",
+        "raw_missing_count": 1,
+        "raw_coverage_rate": "0.0",
+        "hit_at_1_count": "0",
+        "hit_at_3_count": "0",
+        "hit_at_5_count": "0",
+        "hit_at_10_count": "0",
+        "hit_at_10_rate": 0,
+        "avg_raw_candidate_count": "50.0",
+        "diagnosis": "candidate generation 병목이 큼"
+      },
+      {
+        "group_level": "campaign_activity_type",
+        "group_value": "종교행사",
+        "query_count": 1,
+        "raw_covered_count": "0",
+        "raw_missing_count": 1,
+        "raw_coverage_rate": "0.0",
+        "hit_at_1_count": "0",
+        "hit_at_3_count": "0",
+        "hit_at_5_count": "0",
+        "hit_at_10_count": "0",
+        "hit_at_10_rate": 0,
+        "avg_raw_candidate_count": "50.0",
+        "diagnosis": "candidate generation 병목이 큼"
+      },
+      {
+        "group_level": "campaign_activity_type",
+        "group_value": "퇴근인사",
+        "query_count": 1,
+        "raw_covered_count": "0",
+        "raw_missing_count": 1,
+        "raw_coverage_rate": "0.0",
+        "hit_at_1_count": "0",
+        "hit_at_3_count": "0",
+        "hit_at_5_count": "0",
+        "hit_at_10_count": "0",
+        "hit_at_10_rate": 0,
+        "avg_raw_candidate_count": "50.0",
+        "diagnosis": "candidate generation 병목이 큼"
+      }
+    ],
+    "fallback_message": "실시간 API 서버에 연결할 수 없어 저장된 평가 결과를 표시합니다."
+  },
+  "baseline_evaluation_summary": [
+    {
+      "k": 1,
+      "precision_at_k": 0.02857142857142857,
+      "recall_at_k": 0.02857142857142857,
+      "ndcg_at_k": 0.02857142857142857,
+      "query_count": 70
+    },
+    {
+      "k": 3,
+      "precision_at_k": 0.009523809523809523,
+      "recall_at_k": 0.02857142857142857,
+      "ndcg_at_k": 0.02857142857142857,
+      "query_count": 70
+    },
+    {
+      "k": 5,
+      "precision_at_k": 0.02,
+      "recall_at_k": 0.1,
+      "ndcg_at_k": 0.05682982552873656,
+      "query_count": 70
+    },
+    {
+      "k": 10,
+      "precision_at_k": 0.027142857142857146,
+      "recall_at_k": 0.2714285714285714,
+      "ndcg_at_k": 0.11047331575897554,
+      "query_count": 70
+    }
+  ],
+  "optimized_evaluation_summary": [
+    {
+      "k": 1,
+      "precision_at_k": 0.07142857142857142,
+      "recall_at_k": 0.07142857142857142,
+      "ndcg_at_k": 0.07142857142857142,
+      "query_count": 70
+    },
+    {
+      "k": 3,
+      "precision_at_k": 0.05714285714285714,
+      "recall_at_k": 0.17142857142857143,
+      "ndcg_at_k": 0.13078069668367553,
+      "query_count": 70
+    },
+    {
+      "k": 5,
+      "precision_at_k": 0.045714285714285714,
+      "recall_at_k": 0.22857142857142856,
+      "ndcg_at_k": 0.15351262496620435,
+      "query_count": 70
+    },
+    {
+      "k": 10,
+      "precision_at_k": 0.027142857142857146,
+      "recall_at_k": 0.2714285714285714,
+      "ndcg_at_k": 0.1681966142662297,
+      "query_count": 70
+    }
+  ]
+}

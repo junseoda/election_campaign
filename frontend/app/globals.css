@@ -545,6 +545,24 @@ input[type="checkbox"] {
   background: rgba(255, 255, 255, 0.62);
 }
 
+.demoNotice {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 18px;
+  border: 1px solid rgba(255, 149, 0, 0.18);
+  border-radius: var(--radius-sm);
+  background: #fffaf3;
+  padding: 10px 12px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.demoNotice span:last-child {
+  min-width: 0;
+}
+
 .skeletonStack {
   display: grid;
   gap: 10px;
@@ -2729,6 +2747,10 @@ button {
   font-size: 12px;
   font-style: normal;
   font-weight: 800;
+}
+
+.mapStopList .coordWarning {
+  color: var(--accent-deep);
 }
 
 .mapPageGrid {

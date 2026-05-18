@@ -1,0 +1,58 @@
+node_modules
+.next
+out
+.env
+.env.local
+.env.production
+.env.development.local
+.env.production.local
+.env.test.local
+.DS_Store
+
+*.log
+.vercel
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Node / Next
+node_modules/
+.next/
+out/
+.vercel/
+
+# Env
+.env
+.env.*
+!.env.example
+
+# Logs / profiling
+*.log
+latest_run.txt
+profiling_output.txt
+profiling_report.txt
+
+# Archives
+*.zip
+*.zip.zip
+
+# Raw large CSV data
+data/*.csv
+
+# Keep processed data
+!data/processed/
+!data/processed/*.csv
+!data/processed/*.json
+
+# Heavy raw images
+gold set수작업/**/*.jpg
+gold set수작업/**/*.jpeg
+gold set수작업/**/*.png
+
+# Repeated test outputs
+output/experiments_optimized_test/
+output/experiments_optimized_test1/
+output/experiments_optimized_test10b/

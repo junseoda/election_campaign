@@ -1,0 +1,477 @@
+"use client";
+
+import { useEffect, useMemo, useRef, useState } from "react";
+
+const SEOUL_CITY_HALL = { lat: 37.5665, lng: 126.978 };
+const SDK_SCRIPT_ID = "kakao-map-sdk";
+
+export const FALLBACK_COORDS = {
+  "성동구청": { lat: 37.5634, lng: 127.0369 },
+  "성동구청 앞 광장": { lat: 37.5634, lng: 127.0369 },
+  "성수역 3번 출구 앞": { lat: 37.5446, lng: 127.0557 },
+  "왕십리역 광장": { lat: 37.5612, lng: 127.0371 },
+  "서울숲 입구": { lat: 37.5444, lng: 127.0374 },
+  "서울시청": { lat: 37.5665, lng: 126.978 },
+  "서울시청 앞 광장": { lat: 37.5665, lng: 126.978 },
+  "시청역 5번 출구 앞": { lat: 37.5658, lng: 126.9769 },
+  "남대문시장": { lat: 37.5592, lng: 126.9777 },
+  "남대문시장 입구": { lat: 37.5592, lng: 126.9777 },
+  "동대문종합시장 입구": { lat: 37.57, lng: 127.0089 },
+  "약수노인복지관": { lat: 37.5547, lng: 127.0106 },
+  "강남역 11번 출구 앞": { lat: 37.498, lng: 127.0276 },
+  "서울시립동대문노인종합복지관": { lat: 37.5873, lng: 127.05 },
+  "홍대입구역 9번 출구 앞": { lat: 37.5572, lng: 126.9245 },
+  "여의도역 5번 출구 앞": { lat: 37.5219, lng: 126.9245 },
+  "건대입구역 2번 출구 앞": { lat: 37.5404, lng: 127.0692 },
+  "신림역 4번 출구 앞": { lat: 37.4842, lng: 126.9297 },
+  "잠실역 8번 출구 앞": { lat: 37.5133, lng: 127.1002 },
+};
+
+export const DISTRICT_CENTER_COORDS = {
+  "종로구": { lat: 37.5735, lng: 126.9788 },
+  "중구": { lat: 37.5636, lng: 126.9976 },
+  "용산구": { lat: 37.5384, lng: 126.9654 },
+  "성동구": { lat: 37.5634, lng: 127.0369 },
+  "광진구": { lat: 37.5384, lng: 127.0823 },
+  "동대문구": { lat: 37.5744, lng: 127.0396 },
+  "중랑구": { lat: 37.6063, lng: 127.0927 },
+  "성북구": { lat: 37.5894, lng: 127.0167 },
+  "강북구": { lat: 37.6396, lng: 127.0257 },
+  "도봉구": { lat: 37.6688, lng: 127.0471 },
+  "노원구": { lat: 37.6542, lng: 127.0568 },
+  "은평구": { lat: 37.6027, lng: 126.9291 },
+  "서대문구": { lat: 37.5791, lng: 126.9368 },
+  "마포구": { lat: 37.5663, lng: 126.9019 },
+  "양천구": { lat: 37.5169, lng: 126.8664 },
+  "강서구": { lat: 37.5509, lng: 126.8495 },
+  "구로구": { lat: 37.4955, lng: 126.8877 },
+  "금천구": { lat: 37.4569, lng: 126.8955 },
+  "영등포구": { lat: 37.5264, lng: 126.8962 },
+  "동작구": { lat: 37.5124, lng: 126.9393 },
+  "관악구": { lat: 37.4784, lng: 126.9516 },
+  "서초구": { lat: 37.4836, lng: 127.0326 },
+  "강남구": { lat: 37.5172, lng: 127.0473 },
+  "송파구": { lat: 37.5145, lng: 127.1059 },
+  "강동구": { lat: 37.5301, lng: 127.1238 },
+};
+
+function isFiniteCoord(value) {
+  return Number.isFinite(Number(value));
+}
+
+function normalizeCoord(stop) {
+  if (isFiniteCoord(stop.lat) && isFiniteCoord(stop.lng)) {
+    return {
+      lat: Number(stop.lat),
+      lng: Number(stop.lng),
+      hasExactCoord: true,
+      coordSource: "original",
+    };
+  }
+
+  const placeFallback = FALLBACK_COORDS[stop.place_name] || FALLBACK_COORDS[stop.recommended_place_name];
+  if (placeFallback) {
+    return {
+      ...placeFallback,
+      hasExactCoord: false,
+      coordSource: "place_fallback",
+    };
+  }
+
+  const districtFallback = DISTRICT_CENTER_COORDS[stop.district] || DISTRICT_CENTER_COORDS[stop.recommended_district];
+  if (districtFallback) {
+    return {
+      ...districtFallback,
+      hasExactCoord: false,
+      coordSource: "district_fallback",
+    };
+  }
+
+  return {
+    ...SEOUL_CITY_HALL,
+    hasExactCoord: false,
+    coordSource: "seoul_fallback",
+  };
+}
+
+export function normalizeStops(stops = []) {
+  return stops.map((stop, index) => {
+    const sequence = Number(stop.sequence ?? stop.order ?? stop.rank ?? index + 1) || index + 1;
+    const placeName = stop.place_name || stop.recommended_place_name || "장소 확인";
+    const district = stop.district || stop.recommended_district || "";
+    const placeType = stop.place_type || stop.recommended_place_type || "기타";
+    const coord = normalizeCoord({ ...stop, place_name: placeName, district });
+
+    return {
+      ...stop,
+      id: stop.id || `stop-${sequence}`,
+      sequence,
+      time: stop.time || stop.start_time || "",
+      place_name: placeName,
+      district,
+      address: stop.address || "",
+      place_type: placeType,
+      reason: stop.reason || stop.recommendation_reason || stop.sequence_reason || "",
+      fit_label: stop.fit_label || "",
+      score: stop.score,
+      ...coord,
+    };
+  }).sort((a, b) => a.sequence - b.sequence);
+}
+
+function getCoordBadge(stop) {
+  if (!stop) {
+    return "";
+  }
+  if (stop.coordSource === "original") {
+    return "";
+  }
+  if (stop.coordSource === "district_fallback") {
+    return "권역 기준 위치";
+  }
+  return "좌표 확인 필요";
+}
+
+function getMapCenter(stops) {
+  if (!stops.length) {
+    return SEOUL_CITY_HALL;
+  }
+
+  const total = stops.reduce(
+    (acc, stop) => ({
+      lat: acc.lat + stop.lat,
+      lng: acc.lng + stop.lng,
+    }),
+    { lat: 0, lng: 0 }
+  );
+
+  return {
+    lat: total.lat / stops.length,
+    lng: total.lng / stops.length,
+  };
+}
+
+function loadKakaoSdk(appKey) {
+  if (typeof window === "undefined" || typeof document === "undefined") {
+    return Promise.reject(new Error("browser-only"));
+  }
+
+  if (window.kakao?.maps) {
+    return new Promise((resolve) => {
+      window.kakao.maps.load(() => resolve(window.kakao));
+    });
+  }
+
+  if (window.__kakaoMapSdkPromise) {
+    return window.__kakaoMapSdkPromise;
+  }
+
+  window.__kakaoMapSdkPromise = new Promise((resolve, reject) => {
+    const existingScript = document.getElementById(SDK_SCRIPT_ID);
+    const script = existingScript || document.createElement("script");
+
+    script.id = SDK_SCRIPT_ID;
+    script.src = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=${appKey}&autoload=false`;
+    script.async = true;
+    script.onload = () => {
+      if (!window.kakao?.maps) {
+        reject(new Error("kakao maps unavailable"));
+        return;
+      }
+      window.kakao.maps.load(() => resolve(window.kakao));
+    };
+    script.onerror = () => reject(new Error("kakao sdk load failed"));
+
+    if (!existingScript) {
+      document.head.appendChild(script);
+    }
+  });
+
+  return window.__kakaoMapSdkPromise;
+}
+
+function clearOverlays(overlaysRef) {
+  overlaysRef.current.forEach(({ overlay, element, handler }) => {
+    if (element && handler) {
+      element.removeEventListener("click", handler);
+    }
+    overlay.setMap(null);
+  });
+  overlaysRef.current = [];
+}
+
+function createMarkerElement(stop, selected) {
+  const element = document.createElement("button");
+  element.type = "button";
+  element.className = `kakao-route-marker ${selected ? "selected" : ""}`;
+  element.setAttribute("aria-label", `${stop.sequence}번 ${stop.place_name} 선택`);
+  element.innerHTML = `<span>${stop.sequence}</span>`;
+  return element;
+}
+
+function MapFallback({ stops, selectedStop, onSelectStop, compact, loadError }) {
+  const title = loadError ? "카카오맵을 불러오지 못해 미리보기 지도로 표시합니다." : "지도 설정 전 미리보기";
+
+  return (
+    <div className={`kakao-map-card fallback ${compact ? "compact" : ""}`}>
+      <div className="map-skeleton soft">
+        <div className="mapToolbar">
+          <span className="tag amber">{title}</span>
+          <span>{stops.length ? `${stops.length}곳` : "추천 전"}</span>
+        </div>
+        <div className="fallbackRouteList">
+          {stops.length ? stops.map((stop) => (
+            <button
+              type="button"
+              key={stop.id}
+              className={selectedStop?.id === stop.id ? "active" : ""}
+              onClick={() => onSelectStop?.(stop.id)}
+            >
+              <span>{stop.sequence}</span>
+              <strong>{stop.place_name}</strong>
+              <small>{stop.time || "시간 확인"} · {stop.district || "서울"} · {stop.place_type}</small>
+            </button>
+          )) : (
+            <p>추천 동선을 생성하면 지도에 방문 지점이 표시됩니다.</p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function KakaoRouteMap({
+  stops = [],
+  selectedStopId,
+  onSelectStop,
+  className = "",
+  compact = false,
+  startLabel = "",
+}) {
+  const appKey =
+    process.env.NEXT_PUBLIC_KAKAO_MAP_API_KEY ||
+    process.env.NEXT_PUBLIC_KAKAO_MAP_JS_KEY;
+  const mapRef = useRef(null);
+  const kakaoMapRef = useRef(null);
+  const overlaysRef = useRef([]);
+  const polylineRef = useRef(null);
+  const [isLoading, setIsLoading] = useState(Boolean(appKey));
+  const [isReady, setIsReady] = useState(false);
+  const [loadError, setLoadError] = useState("");
+
+  const normalizedStops = useMemo(() => normalizeStops(stops), [stops]);
+  const selectedStop = useMemo(
+    () => normalizedStops.find((stop) => stop.id === selectedStopId) || normalizedStops[0],
+    [normalizedStops, selectedStopId]
+  );
+  const stopPositionKey = useMemo(
+    () => normalizedStops.map((stop) => `${stop.id}:${stop.lat}:${stop.lng}`).join("|"),
+    [normalizedStops]
+  );
+
+  useEffect(() => {
+    if (!appKey) {
+      setIsLoading(false);
+      setLoadError("missing-key");
+      return;
+    }
+
+    if (typeof window === "undefined" || !mapRef.current) {
+      return;
+    }
+
+    let cancelled = false;
+
+    setIsLoading(true);
+    setLoadError("");
+
+    loadKakaoSdk(appKey)
+      .then((kakao) => {
+        if (cancelled || !mapRef.current) {
+          return;
+        }
+
+        try {
+          const center = getMapCenter(normalizedStops);
+          const map = new kakao.maps.Map(mapRef.current, {
+            center: new kakao.maps.LatLng(center.lat, center.lng),
+            level: compact ? 8 : 7,
+            draggable: !compact,
+            scrollwheel: !compact,
+          });
+          kakaoMapRef.current = map;
+          setIsReady(true);
+          setIsLoading(false);
+        } catch (error) {
+          setLoadError("init-failed");
+          setIsLoading(false);
+        }
+      })
+      .catch(() => {
+        setLoadError("sdk-failed");
+        setIsLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+      clearOverlays(overlaysRef);
+      if (polylineRef.current) {
+        polylineRef.current.setMap(null);
+        polylineRef.current = null;
+      }
+    };
+  }, [appKey, compact]);
+
+  useEffect(() => {
+    if (!isReady || !kakaoMapRef.current || typeof window === "undefined" || !window.kakao?.maps) {
+      return;
+    }
+
+    const kakao = window.kakao;
+    const map = kakaoMapRef.current;
+    clearOverlays(overlaysRef);
+
+    if (polylineRef.current) {
+      polylineRef.current.setMap(null);
+      polylineRef.current = null;
+    }
+
+    normalizedStops.forEach((stop) => {
+      const position = new kakao.maps.LatLng(stop.lat, stop.lng);
+      const selected = stop.id === selectedStop?.id;
+      const element = createMarkerElement(stop, selected);
+      const handler = (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        onSelectStop?.(stop.id);
+      };
+      element.addEventListener("click", handler);
+
+      const overlay = new kakao.maps.CustomOverlay({
+        position,
+        content: element,
+        yAnchor: 1.18,
+        zIndex: selected ? 80 : 20,
+      });
+      overlay.setMap(map);
+      overlaysRef.current.push({ overlay, element, handler });
+    });
+
+    if (normalizedStops.length >= 2) {
+      const linePath = normalizedStops.map((stop) => new kakao.maps.LatLng(stop.lat, stop.lng));
+      const polyline = new kakao.maps.Polyline({
+        path: linePath,
+        strokeWeight: compact ? 2 : 3,
+        strokeColor: "#f59e0b",
+        strokeOpacity: compact ? 0.75 : 0.82,
+        strokeStyle: "solid",
+      });
+      polyline.setMap(map);
+      polylineRef.current = polyline;
+    }
+  }, [isReady, normalizedStops, selectedStop?.id, onSelectStop, compact]);
+
+  useEffect(() => {
+    if (!isReady || !kakaoMapRef.current || typeof window === "undefined" || !window.kakao?.maps) {
+      return;
+    }
+
+    const kakao = window.kakao;
+    const map = kakaoMapRef.current;
+
+    if (!normalizedStops.length) {
+      map.setCenter(new kakao.maps.LatLng(SEOUL_CITY_HALL.lat, SEOUL_CITY_HALL.lng));
+      map.setLevel(compact ? 8 : 7);
+      return;
+    }
+
+    if (normalizedStops.length === 1) {
+      map.setCenter(new kakao.maps.LatLng(normalizedStops[0].lat, normalizedStops[0].lng));
+      map.setLevel(compact ? 7 : 5);
+      return;
+    }
+
+    const bounds = new kakao.maps.LatLngBounds();
+    normalizedStops.forEach((stop) => {
+      bounds.extend(new kakao.maps.LatLng(stop.lat, stop.lng));
+    });
+    map.setBounds(
+      bounds,
+      compact ? 24 : 60,
+      compact ? 24 : 64,
+      compact ? 24 : 152,
+      compact ? 24 : 64
+    );
+  }, [isReady, stopPositionKey, compact, normalizedStops]);
+
+  useEffect(() => {
+    if (!isReady || !selectedStop || !kakaoMapRef.current || typeof window === "undefined" || !window.kakao?.maps) {
+      return;
+    }
+    const kakao = window.kakao;
+    kakaoMapRef.current.panTo(new kakao.maps.LatLng(selectedStop.lat, selectedStop.lng));
+  }, [isReady, selectedStop?.id, selectedStop?.lat, selectedStop?.lng]);
+
+  if (!normalizedStops.length) {
+    return (
+      <div className={`kakao-map-card empty ${compact ? "compact" : ""} ${className}`}>
+        <div className="map-skeleton soft">
+          <strong>추천 동선을 생성하면 지도에 방문 지점이 표시됩니다.</strong>
+          <p>출발지와 방문 지역을 입력한 뒤 동선 추천을 실행해주세요.</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!appKey || loadError) {
+    return (
+      <MapFallback
+        stops={normalizedStops}
+        selectedStop={selectedStop}
+        onSelectStop={onSelectStop}
+        compact={compact}
+        loadError={loadError}
+      />
+    );
+  }
+
+  return (
+    <div className={`kakao-map-card ${compact ? "compact" : ""} ${className}`}>
+      <div className="kakao-map-container" ref={mapRef} />
+      {isLoading ? (
+        <div className="map-skeleton">
+          <strong>지도를 불러오고 있어요</strong>
+          <span />
+          <span />
+        </div>
+      ) : null}
+      {!compact ? (
+        <div className="kakao-map-overlay map-top-left">
+          <strong>지도 기반 동선</strong>
+          {startLabel ? <span>출발 · {startLabel}</span> : null}
+        </div>
+      ) : null}
+      <div className="kakao-map-overlay map-top-right">
+        {compact ? `${normalizedStops.length}곳` : `${normalizedStops.length}개 추천 장소`}
+      </div>
+      {selectedStop && !compact ? (
+        <div className="map-floating-card">
+          <div>
+            <span className="map-badge">{selectedStop.sequence} · {selectedStop.time || "시간 확인"}</span>
+            {getCoordBadge(selectedStop) ? <span className="map-badge muted">{getCoordBadge(selectedStop)}</span> : null}
+          </div>
+          <strong>{selectedStop.place_name}</strong>
+          <p>{selectedStop.district || "서울"} · {selectedStop.place_type}</p>
+          {selectedStop.reason ? <small>{selectedStop.reason}</small> : null}
+        </div>
+      ) : null}
+      {!compact ? (
+        <div className="map-legend">
+          <span><i className="legend-dot orange" />추천 장소</span>
+          <span><i className="legend-dot dark" />선택 장소</span>
+          <span><i className="legend-dot muted" />좌표 확인 필요</span>
+        </div>
+      ) : null}
+    </div>
+  );
+}

@@ -1,0 +1,25 @@
+﻿diagnosis_category,metric,value,ratio,interpretation,recommendation
+overall,total_queries,70,1.0,strong positive Gold query 전체 수,동일 query set을 유지해 모델별 비교 재현성 확보
+overall,raw_candidate_missing_queries,51,0.7285714285714285,정답 장소가 raw Top50 후보군에 없어 reranking으로 맞출 수 없는 query,candidate generation 단계의 장소 소스 확장과 alias 정규화가 우선 필요
+overall,raw_candidate_recall_at_50,19,0.2714285714285714,raw 후보군 Top50 안에 정답 장소가 존재하는 비율,R@10 상한을 높이려면 raw recall@50 자체를 개선해야 함
+overall,optimized_hit_at_10,19,0.2714285714285714,optimized reranking 후 Top10 hit 수,현재 covered query는 모두 Top10에 진입해 reranking보다 후보 생성이 병목
+missing_by_campaign_activity_type,현장방문,18,1.0,현장방문 유형에서 raw 후보 누락이 발생,일정 유형별 전용 후보 source를 추가하고 장소명 alias를 보강
+missing_by_campaign_activity_type,지역상권방문,8,0.32,지역상권방문 유형에서 raw 후보 누락이 발생,일정 유형별 전용 후보 source를 추가하고 장소명 alias를 보강
+missing_by_campaign_activity_type,방문인사,8,0.8888888888888888,방문인사 유형에서 raw 후보 누락이 발생,일정 유형별 전용 후보 source를 추가하고 장소명 alias를 보강
+missing_by_campaign_activity_type,체육행사,6,1.0,체육행사 유형에서 raw 후보 누락이 발생,일정 유형별 전용 후보 source를 추가하고 장소명 alias를 보강
+missing_by_campaign_activity_type,복지현장방문,4,1.0,복지현장방문 유형에서 raw 후보 누락이 발생,일정 유형별 전용 후보 source를 추가하고 장소명 alias를 보강
+missing_by_campaign_activity_type,기념행사,2,0.6666666666666666,기념행사 유형에서 raw 후보 누락이 발생,일정 유형별 전용 후보 source를 추가하고 장소명 alias를 보강
+missing_by_campaign_activity_type,거리인사,2,1.0,거리인사 유형에서 raw 후보 누락이 발생,일정 유형별 전용 후보 source를 추가하고 장소명 alias를 보강
+missing_by_campaign_activity_type,정책간담회,1,1.0,정책간담회 유형에서 raw 후보 누락이 발생,일정 유형별 전용 후보 source를 추가하고 장소명 alias를 보강
+missing_by_campaign_activity_type,종교행사,1,1.0,종교행사 유형에서 raw 후보 누락이 발생,일정 유형별 전용 후보 source를 추가하고 장소명 alias를 보강
+missing_by_campaign_activity_type,퇴근인사,1,1.0,퇴근인사 유형에서 raw 후보 누락이 발생,일정 유형별 전용 후보 source를 추가하고 장소명 alias를 보강
+missing_by_place_type,공원,11,1.0,공원 장소 유형의 raw 후보 coverage 한계,"공원뿐 아니라 하천 산책로, 산 정상/팔각정, 광장, 생활권 야외공간 POI를 확장"
+missing_by_place_type,골목상권,7,0.7,골목상권 장소 유형의 raw 후보 coverage 한계,서울시 골목상권/상점가/먹자골목 데이터와 상권명 alias를 후보군에 추가
+missing_by_place_type,전통시장,6,0.2857142857142857,전통시장 장소 유형의 raw 후보 coverage 한계,"전통시장 공식 목록에 시장 출입구/남문/북문, 통칭, 별칭을 확장하고 상권 POI alias table을 추가"
+missing_by_place_type,체육시설,6,1.0,체육시설 장소 유형의 raw 후보 coverage 한계,"공공체육시설, 학교/학생체육관, 생활체육 행사장 데이터를 별도 candidate source로 추가"
+missing_by_place_type,복지시설,5,1.0,복지시설 장소 유형의 raw 후보 coverage 한계,"노인복지시설 외에 종합사회복지관, 장애인복지관, 구립 복지시설 목록을 통합"
+missing_by_place_type,정책현장,5,1.0,정책현장 장소 유형의 raw 후보 coverage 한계,"정책 발표/민원 현장 후보로 공공시설, 도시문제 현장, 생활 SOC 데이터를 추가"
+missing_by_place_type,노동현장,4,1.0,노동현장 장소 유형의 raw 후보 coverage 한계,"노동조합, 산업단지, 사업장 밀집지, 근로자센터 후보군을 별도 구축"
+missing_by_place_type,교통거점,3,1.0,교통거점 장소 유형의 raw 후보 coverage 한계,"지하철역 외에 사거리, 광장, 주요 도로 결절점, 버스 환승거점 데이터를 추가"
+missing_by_place_type,재개발/도시개발현장,3,1.0,재개발/도시개발현장 장소 유형의 raw 후보 coverage 한계,"정비사업구역, 재개발/재건축 사업지, 도시개발 프로젝트 위치 데이터를 추가"
+missing_by_place_type,종교시설,1,1.0,종교시설 장소 유형의 raw 후보 coverage 한계,종교시설 POI와 종교행사 장소 후보군을 별도 구축

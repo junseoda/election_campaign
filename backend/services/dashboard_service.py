@@ -7,7 +7,18 @@ from typing import Any
 import pandas as pd
 
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
+BACKEND_ROOT = Path(__file__).resolve().parents[1]
+REPOSITORY_ROOT = BACKEND_ROOT.parent
+
+
+def _resolve_data_root() -> Path:
+    for candidate in (BACKEND_ROOT, REPOSITORY_ROOT):
+        if (candidate / "output").exists():
+            return candidate
+    return BACKEND_ROOT
+
+
+PROJECT_ROOT = _resolve_data_root()
 
 GOLD_QUERIES_PATH = PROJECT_ROOT / "output" / "gold_set_evaluation_queries.csv"
 GOLD_SUMMARY_PATH = PROJECT_ROOT / "output" / "gold_set_summary.json"

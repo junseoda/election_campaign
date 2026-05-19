@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
+from functools import lru_cache
 from pathlib import Path
 import hashlib
 import re
@@ -10,7 +11,18 @@ from typing import Any
 import pandas as pd
 
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
+BACKEND_ROOT = Path(__file__).resolve().parents[1]
+REPOSITORY_ROOT = BACKEND_ROOT.parent
+
+
+def _resolve_data_root() -> Path:
+    for candidate in (BACKEND_ROOT, REPOSITORY_ROOT):
+        if (candidate / "output").exists():
+            return candidate
+    return BACKEND_ROOT
+
+
+PROJECT_ROOT = _resolve_data_root()
 OPTIMIZED_RECOMMENDATIONS_PATH = (
     PROJECT_ROOT
     / "output"
@@ -349,6 +361,7 @@ def _district_fit(candidate_district: str, preferred_districts: list[str]) -> fl
     return 0.0
 
 
+@lru_cache(maxsize=1)
 def _load_candidate_pool() -> pd.DataFrame:
     optimized = _read_csv(OPTIMIZED_RECOMMENDATIONS_PATH)
     raw = _read_csv(RAW_BASELINE_PATH)
@@ -398,6 +411,7 @@ def _load_candidate_pool() -> pd.DataFrame:
     ).reset_index(drop=True)
 
 
+@lru_cache(maxsize=1)
 def _load_past_visits() -> pd.DataFrame:
     try:
         visits = _read_csv(PAST_VISITS_PATH)
@@ -761,5 +775,6 @@ def recommend_route(payload: dict[str, Any]) -> dict[str, Any]:
     return _build_route(request)
 
 
+@lru_cache(maxsize=1)
 def get_sample_route() -> dict[str, Any]:
     return recommend_route(get_default_route_request())

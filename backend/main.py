@@ -1,4 +1,5 @@
 from pathlib import Path
+import os
 import sys
 from typing import Literal
 
@@ -12,25 +13,41 @@ import uvicorn
 
 # Run example:
 # uvicorn backend.main:app --reload
+# uvicorn main:app --host 0.0.0.0 --port $PORT
 # python backend/main.py
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT))
+BACKEND_ROOT = Path(__file__).resolve().parent
+PROJECT_ROOT = BACKEND_ROOT.parent
+for import_root in (PROJECT_ROOT, BACKEND_ROOT):
+    if str(import_root) not in sys.path:
+        sys.path.insert(0, str(import_root))
 
 from scripts.message_rules import recommend_messages  # noqa: E402
 from scripts.recommender import recommend_places  # noqa: E402
 from scripts.route_planner import build_campaign_route  # noqa: E402
-from backend.services.dashboard_service import (  # noqa: E402
-    get_candidate_coverage_dashboard,
-    get_evaluation_dashboard,
-    get_gold_queries,
-    get_optimized_recommendations,
-)
-from backend.services.route_service import (  # noqa: E402
-    get_route_options,
-    get_sample_route,
-    recommend_route,
-)
+try:
+    from services.dashboard_service import (  # type: ignore  # noqa: E402
+        get_candidate_coverage_dashboard,
+        get_evaluation_dashboard,
+        get_gold_queries,
+        get_optimized_recommendations,
+    )
+    from services.route_service import (  # type: ignore  # noqa: E402
+        get_route_options,
+        get_sample_route,
+        recommend_route,
+    )
+except ModuleNotFoundError:
+    from backend.services.dashboard_service import (  # noqa: E402
+        get_candidate_coverage_dashboard,
+        get_evaluation_dashboard,
+        get_gold_queries,
+        get_optimized_recommendations,
+    )
+    from backend.services.route_service import (  # noqa: E402
+        get_route_options,
+        get_sample_route,
+        recommend_route,
+    )
 
 
 TimeSlot = Literal["morning", "afternoon"]
@@ -86,18 +103,40 @@ class RouteResponse(BaseModel):
 
 
 app = FastAPI(title="Campaign Recommendation MVP API")
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[
+
+
+def _cors_origins() -> list[str]:
+    defaults = [
+        "https://election-campaign-coral.vercel.app",
+        "https://election-campaign-junseodas-projects.vercel.app",
+        "https://election-campaign-git-main-junseodas-projects.vercel.app",
         "http://localhost:3000",
         "http://127.0.0.1:3000",
         "http://localhost:3001",
         "http://127.0.0.1:3001",
-    ],
+    ]
+    configured = [
+        origin.strip()
+        for origin in os.getenv("BACKEND_CORS_ORIGINS", "").split(",")
+        if origin.strip()
+    ]
+    return list(dict.fromkeys([*defaults, *configured]))
+
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=_cors_origins(),
+    allow_origin_regex=r"https://.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.on_event("startup")
+def warm_backend_cache() -> None:
+    get_sample_route()
+    get_gold_queries(limit=1)
 
 
 @app.exception_handler(RequestValidationError)

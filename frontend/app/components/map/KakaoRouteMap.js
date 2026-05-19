@@ -69,6 +69,15 @@ function normalizeCoord(stop) {
     };
   }
 
+  if (isFiniteCoord(stop.map_position?.lat) && isFiniteCoord(stop.map_position?.lng)) {
+    return {
+      lat: Number(stop.map_position.lat),
+      lng: Number(stop.map_position.lng),
+      hasExactCoord: true,
+      coordSource: "map_position",
+    };
+  }
+
   const placeFallback = FALLBACK_COORDS[stop.place_name] || FALLBACK_COORDS[stop.recommended_place_name];
   if (placeFallback) {
     return {
@@ -411,17 +420,6 @@ export default function KakaoRouteMap({
     const kakao = window.kakao;
     kakaoMapRef.current.panTo(new kakao.maps.LatLng(selectedStop.lat, selectedStop.lng));
   }, [isReady, selectedStop?.id, selectedStop?.lat, selectedStop?.lng]);
-
-  if (!normalizedStops.length) {
-    return (
-      <div className={`kakao-map-card empty ${compact ? "compact" : ""} ${className}`}>
-        <div className="map-skeleton soft">
-          <strong>추천 동선을 생성하면 지도에 방문 지점이 표시됩니다.</strong>
-          <p>출발지와 방문 지역을 입력한 뒤 동선 추천을 실행해주세요.</p>
-        </div>
-      </div>
-    );
-  }
 
   if (!appKey || loadError) {
     return (

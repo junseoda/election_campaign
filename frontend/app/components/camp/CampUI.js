@@ -152,7 +152,7 @@ export function getStopId(item = {}, index = 0) {
 
 export const STATIC_DEMO_MESSAGE = "실시간 API 서버에 연결할 수 없어 저장된 데모 데이터를 표시합니다.";
 
-const API_TIMEOUT_MS = 10000;
+const API_TIMEOUT_MS = 25000;
 const STATIC_DATA_CACHE = {};
 
 function getApiBaseUrl() {

@@ -54,14 +54,151 @@ function normalizeRequest(form) {
   };
 }
 
-function buildRouteStops(timeline = []) {
-  return timeline.map((item, index) => ({
+function firstValue(...values) {
+  return values.find((value) => value !== undefined && value !== null && value !== "") ?? "";
+}
+
+function toNumberOrNull(value) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function normalizeTags(value) {
+  if (Array.isArray(value)) {
+    return value.filter(Boolean).map(String);
+  }
+  if (typeof value === "string") {
+    return value.split(/[;,]/).map((item) => item.trim()).filter(Boolean);
+  }
+  return [];
+}
+
+function extractCoordinates(item = {}) {
+  const sources = [
+    [item.lat, item.lng],
+    [item.latitude, item.longitude],
+    [item.map_lat, item.map_lng],
+    [item.y, item.x],
+    [item.coord_y, item.coord_x],
+    [item.map_position?.lat, item.map_position?.lng],
+    [item.coordinates?.lat, item.coordinates?.lng],
+    [item.position?.lat, item.position?.lng],
+  ];
+
+  for (const [latValue, lngValue] of sources) {
+    const lat = toNumberOrNull(latValue);
+    const lng = toNumberOrNull(lngValue);
+    if (lat !== null && lng !== null) {
+      return { lat, lng };
+    }
+  }
+
+  return { lat: null, lng: null };
+}
+
+function getRouteItems(payload = {}) {
+  const candidates = [
+    payload.timeline,
+    payload.route,
+    payload.stops,
+    payload.recommendations,
+    payload.items,
+    payload.data?.timeline,
+    payload.data?.route,
+    payload.data?.stops,
+    payload.data?.items,
+  ];
+  return candidates.find(Array.isArray) || [];
+}
+
+function normalizeRouteStop(item = {}, index = 0) {
+  const nestedPlace = item.place || item.recommendation || item.candidate || {};
+  const order = Number(firstValue(item.order, item.sequence, item.rank, index + 1)) || index + 1;
+  const coords = extractCoordinates(item);
+  const score = toNumberOrNull(firstValue(item.score, item.final_score, item.suitability_score, item.final_variant_score, nestedPlace.score));
+  const reason = firstValue(
+    item.reason,
+    item.recommendation_reason,
+    item.gold_label_reason,
+    item.sequence_reason,
+    Array.isArray(nestedPlace.reason) ? nestedPlace.reason.join(" / ") : nestedPlace.reason
+  );
+  const startTime = firstValue(item.start_time, item.time, item.visit_time);
+  const stop = {
     ...item,
-    id: getStopId(item, index),
-    sequence: item.order || index + 1,
-    reason: buildShortReason(item),
-    fit_label: getFitLabel(item.score),
-  }));
+    id: String(firstValue(item.id, item.stop_id, item.query_id, `stop-${order}`)),
+    order,
+    sequence: order,
+    place_name: firstValue(item.place_name, item.name, item.title, item.recommended_place_name, nestedPlace.name, "장소 확인"),
+    district: firstValue(item.district, item.gu, item.region, item.recommended_district, nestedPlace.district, "자치구 확인"),
+    place_type: firstValue(item.place_type, item.type, item.category, item.recommended_place_type, nestedPlace.place_type, nestedPlace.type, "장소 유형"),
+    start_time: startTime,
+    end_time: firstValue(item.end_time),
+    time: startTime,
+    address: firstValue(item.address, item.road_address, nestedPlace.address, "주소 확인 필요"),
+    lat: coords.lat,
+    lng: coords.lng,
+    score,
+    reason,
+    tags: normalizeTags(firstValue(item.tags, item.context_tags)),
+  };
+
+  return {
+    ...stop,
+    fit_label: getFitLabel(stop.score),
+    sequence_reason: firstValue(item.sequence_reason, reason),
+    recommendation_reason: firstValue(item.recommendation_reason, reason),
+    map_position: item.map_position || (coords.lat !== null && coords.lng !== null ? { lat: coords.lat, lng: coords.lng } : undefined),
+  };
+}
+
+function buildRouteStops(timeline = []) {
+  return timeline.map(normalizeRouteStop).sort((a, b) => a.order - b.order);
+}
+
+function normalizeRoutePayload(payload = {}, request = {}, previousRoute = null) {
+  const timeline = buildRouteStops(getRouteItems(payload));
+  if (!timeline.length) {
+    return null;
+  }
+
+  const placeTypeDiversity = new Set(timeline.map((item) => item.place_type).filter(Boolean)).size;
+  const summary = {
+    ...(previousRoute?.summary || {}),
+    ...(payload.summary || {}),
+    date: firstValue(payload.summary?.date, request.date, previousRoute?.summary?.date),
+    start_location: firstValue(payload.summary?.start_location, request.start_location, previousRoute?.summary?.start_location),
+    target_voter_group: firstValue(payload.summary?.target_voter_group, request.target_voter_group, payload.target_age_group, previousRoute?.summary?.target_voter_group),
+    campaign_goal: firstValue(payload.summary?.campaign_goal, request.campaign_goal, previousRoute?.summary?.campaign_goal),
+    num_visits: timeline.length,
+    place_type_diversity: Number(payload.summary?.place_type_diversity) || placeTypeDiversity,
+  };
+
+  return {
+    ...payload,
+    request: {
+      ...(previousRoute?.request || {}),
+      ...(payload.request || {}),
+      ...request,
+    },
+    summary,
+    timeline,
+    insights: Array.isArray(payload.insights) ? payload.insights : previousRoute?.insights || [],
+  };
+}
+
+function getCoordinateCount(stops = []) {
+  return stops.filter((stop) => Number.isFinite(Number(stop.lat)) && Number.isFinite(Number(stop.lng))).length;
+}
+
+function debugRoute(message, details = {}) {
+  if (process.env.NODE_ENV !== "production") {
+    console.debug(`[RouteRecommendation] ${message}`, details);
+  }
+}
+
+function warnRoute(message, details = {}) {
+  console.warn(`[RouteRecommendation] ${message}`, details);
 }
 
 function buildShareText(route, selectedItem) {
@@ -314,6 +451,7 @@ export default function RoutePlannerPage() {
   const [selectedStopId, setSelectedStopId] = useState("stop-1");
   const [savedStopIds, setSavedStopIds] = useState([]);
   const [errorMessage, setErrorMessage] = useState("");
+  const [routeNotice, setRouteNotice] = useState("");
   const [toastMessage, setToastMessage] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -347,14 +485,19 @@ export default function RoutePlannerPage() {
     try {
       setIsLoading(true);
       setErrorMessage("");
+      setRouteNotice("");
       const [optionsPayload, samplePayload] = await Promise.all([
         fetchJson("/route/options"),
         fetchJson("/route/sample"),
       ]);
+      const normalizedSample = normalizeRoutePayload(samplePayload, samplePayload?.request || optionsPayload.default_request || {});
+      if (!normalizedSample) {
+        throw new Error("초기 동선 데이터에 방문 지점이 없습니다.");
+      }
       setOptions(optionsPayload);
-      setForm(optionsPayload.default_request || samplePayload?.request || {});
-      setRoute(samplePayload);
-      setSelectedStopId(`stop-${samplePayload?.timeline?.[0]?.order || 1}`);
+      setForm(optionsPayload.default_request || normalizedSample.request || {});
+      setRoute(normalizedSample);
+      setSelectedStopId(normalizedSample.timeline[0]?.id || "stop-1");
       setLastUpdated("방금 전");
     } catch (error) {
       setErrorMessage(error.message);
@@ -387,6 +530,7 @@ export default function RoutePlannerPage() {
   const handleChange = useCallback((key, value) => {
     setForm((current) => ({ ...current, [key]: value }));
     setIsDirty(true);
+    setRouteNotice("");
   }, []);
 
   const handleToggleArray = useCallback((key, value) => {
@@ -395,6 +539,7 @@ export default function RoutePlannerPage() {
       [key]: toggleArrayValue(current?.[key] || [], value),
     }));
     setIsDirty(true);
+    setRouteNotice("");
   }, []);
 
   const runRecommendation = useCallback(async () => {
@@ -402,23 +547,41 @@ export default function RoutePlannerPage() {
       return;
     }
 
+    const requestPayload = normalizeRequest(form);
     try {
       setIsSubmitting(true);
-      setErrorMessage("");
-      const payload = await postJson("/route/recommend", normalizeRequest(form));
-      setRoute(payload);
-      const firstStopId = `stop-${payload?.timeline?.[0]?.order || 1}`;
-      setSelectedStopId(firstStopId);
+      setRouteNotice("");
+      const payload = await postJson("/route/recommend", requestPayload);
+      debugRoute("route response received", {
+        endpoint: "/route/recommend",
+        responseKeys: Object.keys(payload || {}),
+        rawItemCount: getRouteItems(payload).length,
+      });
+      const normalizedPayload = normalizeRoutePayload(payload, requestPayload, route);
+      if (!normalizedPayload) {
+        throw new Error("동선 API 응답에 방문 지점이 없습니다.");
+      }
+      setRoute(normalizedPayload);
+      setSelectedStopId(normalizedPayload.timeline[0]?.id || "stop-1");
       setIsDirty(false);
       setLastUpdated("방금 전");
-      const districts = (form.districts || []).slice(0, 2).join("·") || payload?.summary?.start_location_district || "서울";
-      showToast(`${districts} / ${form.target_voter_group || "타깃"} 조건으로 ${payload?.timeline?.length || 0}개 일정을 추천했습니다.`);
+      debugRoute("route state normalized", {
+        normalizedStopsLength: normalizedPayload.timeline.length,
+        markerStopsLength: getCoordinateCount(normalizedPayload.timeline),
+        selectedStopId: normalizedPayload.timeline[0]?.id,
+      });
+      const districts = (form.districts || []).slice(0, 2).join("·") || normalizedPayload?.summary?.start_location_district || "서울";
+      showToast(`${districts} / ${form.target_voter_group || "타깃"} 조건으로 ${normalizedPayload.timeline.length}개 일정을 추천했습니다.`);
     } catch (error) {
-      setErrorMessage(error.message);
+      warnRoute("route recommendation failed; keeping current route", {
+        endpoint: "/route/recommend",
+        message: error.message,
+      });
+      setRouteNotice("실시간 동선 API 응답이 지연되어 현재 표시 중인 동선을 유지합니다.");
     } finally {
       setIsSubmitting(false);
     }
-  }, [form, showToast]);
+  }, [form, route, showToast]);
 
   const handleSubmit = useCallback((event) => {
     event.preventDefault();
@@ -499,6 +662,12 @@ export default function RoutePlannerPage() {
         <div className="demoNotice" role="status">
           <Tag tone="amber">데모 동선</Tag>
           <span>{route?.fallback_message || options?.fallback_message || STATIC_DEMO_MESSAGE}</span>
+        </div>
+      ) : null}
+      {!isLoading && !errorMessage && routeNotice ? (
+        <div className="demoNotice" role="status">
+          <Tag tone="amber">응답 지연</Tag>
+          <span>{routeNotice}</span>
         </div>
       ) : null}
 

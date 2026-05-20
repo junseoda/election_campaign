@@ -24,7 +24,12 @@ import KakaoRouteMap from "../components/map/KakaoRouteMap";
 const FILTERS = ["전체", "교통거점", "전통시장", "복지시설", "공원", "기타"];
 
 function hasCoordinates(stop = {}) {
-  return Number.isFinite(Number(stop.lat)) && Number.isFinite(Number(stop.lng));
+  return (
+    Number.isFinite(Number(stop.lat)) && Number.isFinite(Number(stop.lng))
+  ) || (
+    Number.isFinite(Number(stop.map_position?.lat)) &&
+    Number.isFinite(Number(stop.map_position?.lng))
+  );
 }
 
 function buildStops(timeline = []) {

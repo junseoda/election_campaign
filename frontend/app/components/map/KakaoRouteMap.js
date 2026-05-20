@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 const SEOUL_CITY_HALL = { lat: 37.5665, lng: 126.978 };
 const SDK_SCRIPT_ID = "kakao-map-sdk";
+const KAKAO_SDK_BASE_URL = "https://dapi.kakao.com/v2/maps/sdk.js";
 
 export const FALLBACK_COORDS = {
   "성동구청": { lat: 37.5634, lng: 127.0369 },
@@ -57,6 +58,33 @@ export const DISTRICT_CENTER_COORDS = {
 
 function isFiniteCoord(value) {
   return Number.isFinite(Number(value));
+}
+
+function normalizeAppKey(appKey) {
+  return typeof appKey === "string" ? appKey.trim() : "";
+}
+
+function getAppKeyLabel(appKey) {
+  const normalized = normalizeAppKey(appKey);
+  if (!normalized) {
+    return "missing";
+  }
+  return `${normalized.slice(0, 4)}...(${normalized.length})`;
+}
+
+function buildKakaoSdkSrc(appKey) {
+  return `${KAKAO_SDK_BASE_URL}?appkey=${encodeURIComponent(normalizeAppKey(appKey))}&autoload=false`;
+}
+
+function buildMaskedKakaoSdkSrc(appKey) {
+  return `${KAKAO_SDK_BASE_URL}?appkey=${getAppKeyLabel(appKey)}&autoload=false`;
+}
+
+function warnKakaoMap(message, details = {}) {
+  if (typeof console === "undefined") {
+    return;
+  }
+  console.warn(`[KakaoMap] ${message}`, details);
 }
 
 function normalizeCoord(stop) {
@@ -132,7 +160,7 @@ function getCoordBadge(stop) {
   if (!stop) {
     return "";
   }
-  if (stop.coordSource === "original") {
+  if (stop.coordSource === "original" || stop.coordSource === "map_position") {
     return "";
   }
   if (stop.coordSource === "district_fallback") {
@@ -161,7 +189,14 @@ function getMapCenter(stops) {
 }
 
 function loadKakaoSdk(appKey) {
+  const normalizedAppKey = normalizeAppKey(appKey);
+  if (!normalizedAppKey) {
+    warnKakaoMap("Kakao map API key is missing");
+    return Promise.reject(new Error("Kakao map API key is missing"));
+  }
+
   if (typeof window === "undefined" || typeof document === "undefined") {
+    warnKakaoMap("Kakao map SDK can only be loaded in the browser");
     return Promise.reject(new Error("browser-only"));
   }
 
@@ -176,23 +211,86 @@ function loadKakaoSdk(appKey) {
   }
 
   window.__kakaoMapSdkPromise = new Promise((resolve, reject) => {
-    const existingScript = document.getElementById(SDK_SCRIPT_ID);
+    const sdkSrc = buildKakaoSdkSrc(normalizedAppKey);
+    const maskedSdkSrc = buildMaskedKakaoSdkSrc(normalizedAppKey);
+    let existingScript = document.getElementById(SDK_SCRIPT_ID);
+
+    if (existingScript && existingScript.src && existingScript.src !== sdkSrc) {
+      existingScript.remove();
+      existingScript = null;
+    }
+
+    if (existingScript?.dataset.kakaoSdkStatus === "error") {
+      existingScript.remove();
+      existingScript = null;
+    }
+
+    const rejectWithLog = (message, error) => {
+      window.__kakaoMapSdkPromise = null;
+      warnKakaoMap(message, {
+        appKey: getAppKeyLabel(normalizedAppKey),
+        scriptSrc: maskedSdkSrc,
+        error: error?.message || String(error || message),
+      });
+      reject(error instanceof Error ? error : new Error(message));
+    };
+
+    const resolveLoadedSdk = () => {
+      if (!window.kakao) {
+        rejectWithLog(
+          "Kakao map SDK loaded but window.kakao is undefined",
+          new Error("Kakao map SDK loaded but window.kakao is undefined")
+        );
+        return;
+      }
+
+      if (!window.kakao.maps) {
+        rejectWithLog(
+          "Kakao map SDK loaded but window.kakao.maps is undefined",
+          new Error("Kakao map SDK loaded but window.kakao.maps is undefined")
+        );
+        return;
+      }
+
+      try {
+        window.kakao.maps.load(() => {
+          if (!window.kakao?.maps?.Map) {
+            rejectWithLog(
+              "Kakao map SDK loaded but kakao.maps.Map is unavailable",
+              new Error("Kakao map SDK loaded but kakao.maps.Map is unavailable")
+            );
+            return;
+          }
+          resolve(window.kakao);
+        });
+      } catch (error) {
+        rejectWithLog("Kakao map SDK maps.load failed", error);
+      }
+    };
+
     const script = existingScript || document.createElement("script");
 
     script.id = SDK_SCRIPT_ID;
-    script.src = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=${appKey}&autoload=false`;
+    script.src = sdkSrc;
     script.async = true;
+    script.dataset.kakaoSdkStatus = "loading";
     script.onload = () => {
-      if (!window.kakao?.maps) {
-        reject(new Error("kakao maps unavailable"));
-        return;
-      }
-      window.kakao.maps.load(() => resolve(window.kakao));
+      script.dataset.kakaoSdkStatus = "loaded";
+      resolveLoadedSdk();
     };
-    script.onerror = () => reject(new Error("kakao sdk load failed"));
+    script.onerror = () => {
+      script.dataset.kakaoSdkStatus = "error";
+      rejectWithLog("Kakao map SDK script failed to load", new Error("Kakao map SDK script failed to load"));
+    };
 
     if (!existingScript) {
       document.head.appendChild(script);
+      return;
+    }
+
+    if (existingScript.dataset.kakaoSdkStatus === "loaded") {
+      window.setTimeout(resolveLoadedSdk, 0);
+      return;
     }
   });
 
@@ -218,8 +316,18 @@ function createMarkerElement(stop, selected) {
   return element;
 }
 
+function getFallbackTitle(loadError) {
+  if (loadError === "missing-key") {
+    return "지도 API 키가 설정되지 않았습니다.";
+  }
+  if (loadError) {
+    return "카카오맵을 불러오지 못해 미리보기 지도로 표시합니다.";
+  }
+  return "지도 설정 전 미리보기";
+}
+
 function MapFallback({ stops, selectedStop, onSelectStop, compact, loadError }) {
-  const title = loadError ? "카카오맵을 불러오지 못해 미리보기 지도로 표시합니다." : "지도 설정 전 미리보기";
+  const title = getFallbackTitle(loadError);
 
   return (
     <div className={`kakao-map-card fallback ${compact ? "compact" : ""}`}>
@@ -257,9 +365,10 @@ export default function KakaoRouteMap({
   compact = false,
   startLabel = "",
 }) {
-  const appKey =
+  const appKey = normalizeAppKey(
     process.env.NEXT_PUBLIC_KAKAO_MAP_API_KEY ||
-    process.env.NEXT_PUBLIC_KAKAO_MAP_JS_KEY;
+    process.env.NEXT_PUBLIC_KAKAO_MAP_JS_KEY
+  );
   const mapRef = useRef(null);
   const kakaoMapRef = useRef(null);
   const overlaysRef = useRef([]);
@@ -280,12 +389,20 @@ export default function KakaoRouteMap({
 
   useEffect(() => {
     if (!appKey) {
+      warnKakaoMap("Kakao map API key is missing");
       setIsLoading(false);
       setLoadError("missing-key");
       return;
     }
 
-    if (typeof window === "undefined" || !mapRef.current) {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    if (!mapRef.current) {
+      warnKakaoMap("Kakao map container is missing");
+      setIsLoading(false);
+      setLoadError("container-missing");
       return;
     }
 
@@ -312,11 +429,23 @@ export default function KakaoRouteMap({
           setIsReady(true);
           setIsLoading(false);
         } catch (error) {
+          warnKakaoMap("Kakao map initialization failed", {
+            appKey: getAppKeyLabel(appKey),
+            error: error?.message || String(error),
+            containerSize: {
+              width: mapRef.current?.clientWidth || 0,
+              height: mapRef.current?.clientHeight || 0,
+            },
+          });
           setLoadError("init-failed");
           setIsLoading(false);
         }
       })
-      .catch(() => {
+      .catch((error) => {
+        warnKakaoMap("Kakao map SDK loading failed", {
+          appKey: getAppKeyLabel(appKey),
+          error: error?.message || String(error),
+        });
         setLoadError("sdk-failed");
         setIsLoading(false);
       });

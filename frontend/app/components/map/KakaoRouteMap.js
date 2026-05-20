@@ -72,6 +72,11 @@ function getAppKeyLabel(appKey) {
   return `${normalized.slice(0, 4)}...(${normalized.length})`;
 }
 
+function isLikelyKakaoAppKey(appKey) {
+  const normalized = normalizeAppKey(appKey);
+  return /^[A-Za-z0-9_-]{20,64}$/.test(normalized) && !/^https?:\/\//i.test(normalized);
+}
+
 function buildKakaoSdkSrc(appKey) {
   return `${KAKAO_SDK_BASE_URL}?appkey=${encodeURIComponent(normalizeAppKey(appKey))}&autoload=false`;
 }
@@ -193,6 +198,14 @@ function loadKakaoSdk(appKey) {
   if (!normalizedAppKey) {
     warnKakaoMap("Kakao map API key is missing");
     return Promise.reject(new Error("Kakao map API key is missing"));
+  }
+
+  if (!isLikelyKakaoAppKey(normalizedAppKey)) {
+    warnKakaoMap("Kakao map API key looks invalid", {
+      appKey: getAppKeyLabel(normalizedAppKey),
+      expected: "Kakao JavaScript key, not a URL",
+    });
+    return Promise.reject(new Error("Kakao map API key looks invalid"));
   }
 
   if (typeof window === "undefined" || typeof document === "undefined") {
@@ -320,6 +333,9 @@ function getFallbackTitle(loadError) {
   if (loadError === "missing-key") {
     return "지도 API 키가 설정되지 않았습니다.";
   }
+  if (loadError === "invalid-key") {
+    return "지도 API 키 형식이 올바르지 않습니다.";
+  }
   if (loadError) {
     return "카카오맵을 불러오지 못해 미리보기 지도로 표시합니다.";
   }
@@ -365,10 +381,15 @@ export default function KakaoRouteMap({
   compact = false,
   startLabel = "",
 }) {
-  const appKey = normalizeAppKey(
-    process.env.NEXT_PUBLIC_KAKAO_MAP_API_KEY ||
-    process.env.NEXT_PUBLIC_KAKAO_MAP_JS_KEY
-  );
+  const primaryAppKey = normalizeAppKey(process.env.NEXT_PUBLIC_KAKAO_MAP_API_KEY);
+  const legacyAppKey = normalizeAppKey(process.env.NEXT_PUBLIC_KAKAO_MAP_JS_KEY);
+  const appKey = isLikelyKakaoAppKey(primaryAppKey)
+    ? primaryAppKey
+    : isLikelyKakaoAppKey(legacyAppKey)
+      ? legacyAppKey
+      : "";
+  const appKeyIssue = appKey ? "" : (primaryAppKey || legacyAppKey ? "invalid-key" : "missing-key");
+  const hasInvalidPrimaryAppKey = Boolean(primaryAppKey && !isLikelyKakaoAppKey(primaryAppKey));
   const mapRef = useRef(null);
   const kakaoMapRef = useRef(null);
   const overlaysRef = useRef([]);
@@ -388,10 +409,21 @@ export default function KakaoRouteMap({
   );
 
   useEffect(() => {
+    if (hasInvalidPrimaryAppKey) {
+      warnKakaoMap("NEXT_PUBLIC_KAKAO_MAP_API_KEY looks invalid", {
+        appKey: getAppKeyLabel(primaryAppKey),
+        expected: "Kakao JavaScript key, not a URL",
+        fallback: isLikelyKakaoAppKey(legacyAppKey) ? "NEXT_PUBLIC_KAKAO_MAP_JS_KEY" : "none",
+      });
+    }
+
     if (!appKey) {
-      warnKakaoMap("Kakao map API key is missing");
+      warnKakaoMap(appKeyIssue === "invalid-key" ? "Kakao map API key looks invalid" : "Kakao map API key is missing", {
+        primary: getAppKeyLabel(primaryAppKey),
+        legacy: getAppKeyLabel(legacyAppKey),
+      });
       setIsLoading(false);
-      setLoadError("missing-key");
+      setLoadError(appKeyIssue);
       return;
     }
 
@@ -458,7 +490,7 @@ export default function KakaoRouteMap({
         polylineRef.current = null;
       }
     };
-  }, [appKey, compact]);
+  }, [appKey, appKeyIssue, compact, hasInvalidPrimaryAppKey, legacyAppKey, primaryAppKey]);
 
   useEffect(() => {
     if (!isReady || !kakaoMapRef.current || typeof window === "undefined" || !window.kakao?.maps) {

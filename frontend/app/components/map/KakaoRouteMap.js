@@ -5,6 +5,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 const SEOUL_CITY_HALL = { lat: 37.5665, lng: 126.978 };
 const SDK_SCRIPT_ID = "kakao-map-sdk";
 const KAKAO_SDK_BASE_URL = "https://dapi.kakao.com/v2/maps/sdk.js";
+const ENABLE_KAKAO_MAP_DEBUG =
+  process.env.NODE_ENV !== "production" || process.env.NEXT_PUBLIC_KAKAO_MAP_DEBUG === "true";
 
 export const FALLBACK_COORDS = {
   "성동구청": { lat: 37.5634, lng: 127.0369 },
@@ -89,10 +91,17 @@ function warnKakaoMap(message, details = {}) {
 }
 
 function debugKakaoMap(message, details = {}) {
-  if (typeof console === "undefined") {
+  if (!ENABLE_KAKAO_MAP_DEBUG || typeof console === "undefined") {
     return;
   }
-  console.info(`[KakaoMap] ${message}`, details);
+  console.debug(`[KakaoMap] ${message}`, details);
+}
+
+function debugKakaoMapDiagnostics(message, container, map) {
+  if (!ENABLE_KAKAO_MAP_DEBUG) {
+    return;
+  }
+  debugKakaoMap(message, getTileDiagnostics(container, map));
 }
 
 function waitForKakaoMapsLoad(kakao, details = {}) {
@@ -708,6 +717,10 @@ export default function KakaoRouteMap({
     };
 
     const scheduleDiagnostics = (container, map, label) => {
+      if (!ENABLE_KAKAO_MAP_DEBUG) {
+        return;
+      }
+
       [0, 240, 900].forEach((delay) => {
         const timer = window.setTimeout(() => {
           if (cancelled || kakaoMapRef.current !== map) {
@@ -715,7 +728,7 @@ export default function KakaoRouteMap({
           }
           forceRoadmap(window.kakao, map);
           map.relayout();
-          debugKakaoMap(label, getTileDiagnostics(container, map));
+          debugKakaoMapDiagnostics(label, container, map);
         }, delay);
         diagnosticTimers.push(timer);
       });
@@ -772,10 +785,12 @@ export default function KakaoRouteMap({
 
             kakaoMapRef.current = map;
             forceRoadmap(kakao, map);
-            debugKakaoMap("map created", {
-              ...getTileDiagnostics(container, map),
-              center: safeCenter,
-            });
+            if (ENABLE_KAKAO_MAP_DEBUG) {
+              debugKakaoMap("map created", {
+                ...getTileDiagnostics(container, map),
+                center: safeCenter,
+              });
+            }
             scheduleDiagnostics(container, map, "tile diagnostics");
 
             const immediateRelayoutTimer = window.setTimeout(() => {
@@ -784,7 +799,7 @@ export default function KakaoRouteMap({
                 map.relayout();
                 map.setCenter(new kakao.maps.LatLng(safeCenter.lat, safeCenter.lng));
                 forceRoadmap(kakao, map);
-                debugKakaoMap("post-create relayout 0ms", getTileDiagnostics(container, map));
+                debugKakaoMapDiagnostics("post-create relayout 0ms", container, map);
               }
             }, 0);
             diagnosticTimers.push(immediateRelayoutTimer);
@@ -794,7 +809,7 @@ export default function KakaoRouteMap({
                 forceRoadmap(kakao, map);
                 map.relayout();
                 map.setCenter(new kakao.maps.LatLng(safeCenter.lat, safeCenter.lng));
-                debugKakaoMap("post-create relayout 300ms", getTileDiagnostics(container, map));
+                debugKakaoMapDiagnostics("post-create relayout 300ms", container, map);
               }
             }, 300);
             diagnosticTimers.push(delayedRelayoutTimer);
@@ -803,7 +818,7 @@ export default function KakaoRouteMap({
               if (!cancelled && kakaoMapRef.current === map) {
                 forceRoadmap(kakao, map);
                 fitMapToStops(kakao, map, normalizedStops, compact);
-                debugKakaoMap("post-layout diagnostics", getTileDiagnostics(container, map));
+                debugKakaoMapDiagnostics("post-layout diagnostics", container, map);
               }
             }, 420);
             diagnosticTimers.push(fitBoundsTimer);
@@ -896,12 +911,14 @@ export default function KakaoRouteMap({
 
     forceRoadmap(kakao, map);
     map.relayout();
-    debugKakaoMap("map overlay update", {
-      normalizedStops: normalizedStops.length,
-      markerStops: normalizedStops.length,
-      selectedStopId: selectedStop?.id || null,
-      ...getTileDiagnostics(mapRef.current, map),
-    });
+    if (ENABLE_KAKAO_MAP_DEBUG) {
+      debugKakaoMap("map overlay update", {
+        normalizedStops: normalizedStops.length,
+        markerStops: normalizedStops.length,
+        selectedStopId: selectedStop?.id || null,
+        ...getTileDiagnostics(mapRef.current, map),
+      });
+    }
 
     const relayoutTimer = window.setTimeout(() => {
       if (!kakaoMapRef.current || kakaoMapRef.current !== map) {
@@ -909,7 +926,7 @@ export default function KakaoRouteMap({
       }
       forceRoadmap(kakao, map);
       map.relayout();
-      debugKakaoMap("post-marker relayout", getTileDiagnostics(mapRef.current, map));
+      debugKakaoMapDiagnostics("post-marker relayout", mapRef.current, map);
     }, 200);
 
     return () => {
@@ -933,7 +950,7 @@ export default function KakaoRouteMap({
       }
       forceRoadmap(kakao, map);
       fitMapToStops(kakao, map, normalizedStops, compact);
-      debugKakaoMap("routeStops relayout", getTileDiagnostics(mapRef.current, map));
+      debugKakaoMapDiagnostics("routeStops relayout", mapRef.current, map);
     }, 220);
 
     return () => {
@@ -966,7 +983,7 @@ export default function KakaoRouteMap({
         }
         forceRoadmap(window.kakao, kakaoMapRef.current);
         fitMapToStops(window.kakao, kakaoMapRef.current, normalizedStops, compact);
-        debugKakaoMap("window resize relayout", getTileDiagnostics(mapRef.current, kakaoMapRef.current));
+        debugKakaoMapDiagnostics("window resize relayout", mapRef.current, kakaoMapRef.current);
       }, 120);
     };
 

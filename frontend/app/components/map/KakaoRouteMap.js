@@ -193,6 +193,34 @@ function getMapCenter(stops) {
   };
 }
 
+function fitMapToStops(kakao, map, stops, compact) {
+  map.relayout();
+
+  if (!stops.length) {
+    map.setCenter(new kakao.maps.LatLng(SEOUL_CITY_HALL.lat, SEOUL_CITY_HALL.lng));
+    map.setLevel(compact ? 8 : 7);
+    return;
+  }
+
+  if (stops.length === 1) {
+    map.setCenter(new kakao.maps.LatLng(stops[0].lat, stops[0].lng));
+    map.setLevel(compact ? 7 : 5);
+    return;
+  }
+
+  const bounds = new kakao.maps.LatLngBounds();
+  stops.forEach((stop) => {
+    bounds.extend(new kakao.maps.LatLng(stop.lat, stop.lng));
+  });
+  map.setBounds(
+    bounds,
+    compact ? 24 : 60,
+    compact ? 24 : 64,
+    compact ? 24 : 152,
+    compact ? 24 : 64
+  );
+}
+
 function loadKakaoSdk(appKey) {
   const normalizedAppKey = normalizeAppKey(appKey);
   if (!normalizedAppKey) {
@@ -458,6 +486,11 @@ export default function KakaoRouteMap({
             scrollwheel: !compact,
           });
           kakaoMapRef.current = map;
+          window.requestAnimationFrame(() => {
+            if (!cancelled && kakaoMapRef.current === map) {
+              fitMapToStops(kakao, map, normalizedStops, compact);
+            }
+          });
           setIsReady(true);
           setIsLoading(false);
         } catch (error) {
@@ -546,32 +579,7 @@ export default function KakaoRouteMap({
       return;
     }
 
-    const kakao = window.kakao;
-    const map = kakaoMapRef.current;
-
-    if (!normalizedStops.length) {
-      map.setCenter(new kakao.maps.LatLng(SEOUL_CITY_HALL.lat, SEOUL_CITY_HALL.lng));
-      map.setLevel(compact ? 8 : 7);
-      return;
-    }
-
-    if (normalizedStops.length === 1) {
-      map.setCenter(new kakao.maps.LatLng(normalizedStops[0].lat, normalizedStops[0].lng));
-      map.setLevel(compact ? 7 : 5);
-      return;
-    }
-
-    const bounds = new kakao.maps.LatLngBounds();
-    normalizedStops.forEach((stop) => {
-      bounds.extend(new kakao.maps.LatLng(stop.lat, stop.lng));
-    });
-    map.setBounds(
-      bounds,
-      compact ? 24 : 60,
-      compact ? 24 : 64,
-      compact ? 24 : 152,
-      compact ? 24 : 64
-    );
+    fitMapToStops(window.kakao, kakaoMapRef.current, normalizedStops, compact);
   }, [isReady, stopPositionKey, compact, normalizedStops]);
 
   useEffect(() => {

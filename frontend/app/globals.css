@@ -30,11 +30,13 @@
 }
 
 html {
+  overflow-x: hidden;
   scroll-behavior: smooth;
 }
 
 body {
   margin: 0;
+  overflow-x: hidden;
   background:
     radial-gradient(circle at 84% -8%, rgba(255, 149, 0, 0.12), transparent 30%),
     linear-gradient(180deg, #fbfaf8 0%, var(--app-bg) 46%, #f1efea 100%);
@@ -99,12 +101,15 @@ input[type="checkbox"] {
 }
 
 .appShell {
+  min-width: 0;
   min-height: 100vh;
   padding: max(18px, env(safe-area-inset-top)) 16px calc(96px + env(safe-area-inset-bottom));
 }
 
 .appContent {
   width: min(100%, 1480px);
+  min-width: 0;
+  max-width: 100%;
   margin: 0 auto;
 }
 
@@ -1056,7 +1061,11 @@ input[type="checkbox"] {
 
 .routeWorkspace {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 22px;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
 }
 
 .routeControlPane,
@@ -1064,6 +1073,8 @@ input[type="checkbox"] {
   display: grid;
   align-content: start;
   gap: 16px;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .routeFormCard {
@@ -1214,14 +1225,25 @@ input[type="checkbox"] {
 
 .routeOutputGrid {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 16px;
   align-items: stretch;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.routeOutputGrid > * {
+  min-width: 0;
+  max-width: 100%;
 }
 
 .selectedRouteCard {
   display: grid;
   gap: 10px;
+  min-width: 0;
   padding: 20px;
+  overflow-wrap: anywhere;
 }
 
 .selectedRouteCard h2 {
@@ -1964,6 +1986,7 @@ input[type="checkbox"] {
   .appContent {
     width: min(100%, 1480px);
     max-width: 1480px;
+    min-width: 0;
     margin: 0;
   }
 
@@ -1982,7 +2005,7 @@ input[type="checkbox"] {
   }
 
   .routeWorkspace {
-    grid-template-columns: minmax(300px, 0.24fr) minmax(0, 0.76fr);
+    grid-template-columns: minmax(280px, 320px) minmax(0, 1fr);
     align-items: start;
   }
 
@@ -2472,12 +2495,19 @@ button {
 .kakao-map-card {
   position: relative;
   display: flex;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
   min-height: 430px;
   overflow: hidden;
   border: 1px solid rgba(0, 0, 0, 0.07);
   border-radius: 28px;
   background: #f7f4ef;
   box-shadow: 0 18px 44px rgba(29, 29, 31, 0.08);
+}
+
+.kakao-map-card:not(.fallback) {
+  height: 430px;
 }
 
 .kakao-map-card.fallback {
@@ -2488,14 +2518,23 @@ button {
   min-height: 285px;
 }
 
+.kakao-map-card.compact:not(.fallback) {
+  height: 285px;
+}
+
 .kakao-map-container {
   position: relative;
   z-index: 1;
   flex: 1 1 auto;
   width: 100%;
-  min-height: inherit;
+  height: 100%;
+  min-height: 420px;
   overflow: hidden;
   background: transparent;
+}
+
+.kakao-map-card.compact .kakao-map-container {
+  min-height: 285px;
 }
 
 .kakao-map-container > div {
@@ -2852,7 +2891,7 @@ button {
 
 @media (min-width: 1080px) {
   .routeWorkspace {
-    grid-template-columns: minmax(300px, 0.24fr) minmax(0, 0.76fr);
+    grid-template-columns: minmax(280px, 320px) minmax(0, 1fr);
   }
 
   .mapPageGrid {
@@ -2864,18 +2903,40 @@ button {
     min-height: 460px;
   }
 
+  .kakao-map-card:not(.fallback) {
+    height: 460px;
+  }
+
   .kakao-map-card.compact {
     min-height: 300px;
+  }
+
+  .kakao-map-card.compact:not(.fallback) {
+    height: 300px;
+  }
+}
+
+@media (min-width: 1440px) {
+  .routeOutputGrid {
+    grid-template-columns: minmax(0, 1.35fr) minmax(280px, 0.85fr);
+  }
+
+  .routeOutputGrid .kakao-map-card {
+    min-height: 460px;
+  }
+
+  .routeOutputGrid .selectedRouteCard {
+    min-height: 400px;
   }
 }
 
 @media (min-width: 1680px) {
-  .routeOutputGrid {
-    grid-template-columns: minmax(520px, 1.35fr) minmax(360px, 0.85fr);
-  }
-
   .routeOutputGrid .kakao-map-card {
     min-height: 480px;
+  }
+
+  .routeOutputGrid .kakao-map-card:not(.fallback) {
+    height: 480px;
   }
 
   .routeOutputGrid .selectedRouteCard {
@@ -2904,7 +2965,23 @@ button {
     min-height: 300px;
   }
 
+  .kakao-map-card:not(.fallback) {
+    height: 300px;
+  }
+
   .kakao-map-card.compact {
+    min-height: 250px;
+  }
+
+  .kakao-map-card.compact:not(.fallback) {
+    height: 250px;
+  }
+
+  .kakao-map-container {
+    min-height: 300px;
+  }
+
+  .kakao-map-card.compact .kakao-map-container {
     min-height: 250px;
   }
 

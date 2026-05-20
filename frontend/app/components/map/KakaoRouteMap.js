@@ -92,6 +92,75 @@ function warnKakaoMap(message, details = {}) {
   console.warn(`[KakaoMap] ${message}`, details);
 }
 
+function debugKakaoMap(message, details = {}) {
+  if (typeof console === "undefined") {
+    return;
+  }
+  console.debug(`[KakaoMap] ${message}`, details);
+}
+
+function getContainerMetrics(container) {
+  if (!container) {
+    return {
+      clientWidth: 0,
+      clientHeight: 0,
+      rectWidth: 0,
+      rectHeight: 0,
+    };
+  }
+
+  const rect = container.getBoundingClientRect();
+  return {
+    clientWidth: container.clientWidth,
+    clientHeight: container.clientHeight,
+    rectWidth: Math.round(rect.width),
+    rectHeight: Math.round(rect.height),
+  };
+}
+
+function hasRenderableSize(metrics) {
+  return metrics.clientWidth > 0 && metrics.clientHeight > 0 && metrics.rectWidth > 0 && metrics.rectHeight > 0;
+}
+
+function getMapTypeId(map) {
+  try {
+    return typeof map?.getMapTypeId === "function" ? map.getMapTypeId() : "unavailable";
+  } catch (error) {
+    return `unavailable: ${error?.message || String(error)}`;
+  }
+}
+
+function forceRoadmap(kakao, map) {
+  if (kakao?.maps?.MapTypeId?.ROADMAP && typeof map?.setMapTypeId === "function") {
+    map.setMapTypeId(kakao.maps.MapTypeId.ROADMAP);
+  }
+}
+
+function getTileDiagnostics(container, map) {
+  if (!container || typeof window === "undefined") {
+    return {
+      innerImgCount: 0,
+      tileCandidateCount: 0,
+      mapTypeId: getMapTypeId(map),
+    };
+  }
+
+  const images = Array.from(container.querySelectorAll("img"));
+  const tileCandidates = Array.from(container.querySelectorAll("img, div")).filter((element) => {
+    const src = element.getAttribute("src") || "";
+    const style = window.getComputedStyle(element);
+    const backgroundImage = style.backgroundImage || "";
+    return /daumcdn|kakao|tile|map/i.test(`${src} ${backgroundImage}`);
+  });
+
+  return {
+    innerImgCount: images.length,
+    tileCandidateCount: tileCandidates.length,
+    mapTypeId: getMapTypeId(map),
+    containerSize: getContainerMetrics(container),
+  };
+}
+
 function normalizeCoord(stop) {
   if (isFiniteCoord(stop.lat) && isFiniteCoord(stop.lng)) {
     return {
@@ -194,6 +263,7 @@ function getMapCenter(stops) {
 }
 
 function fitMapToStops(kakao, map, stops, compact) {
+  forceRoadmap(kakao, map);
   map.relayout();
 
   if (!stops.length) {
@@ -467,6 +537,36 @@ export default function KakaoRouteMap({
     }
 
     let cancelled = false;
+    let initFrame = 0;
+    let initTimer = 0;
+    const diagnosticTimers = [];
+
+    const clearScheduledWork = () => {
+      if (initFrame) {
+        window.cancelAnimationFrame(initFrame);
+        initFrame = 0;
+      }
+      if (initTimer) {
+        window.clearTimeout(initTimer);
+        initTimer = 0;
+      }
+      diagnosticTimers.forEach((timer) => window.clearTimeout(timer));
+      diagnosticTimers.length = 0;
+    };
+
+    const scheduleDiagnostics = (container, map, label) => {
+      [0, 240, 900].forEach((delay) => {
+        const timer = window.setTimeout(() => {
+          if (cancelled || kakaoMapRef.current !== map) {
+            return;
+          }
+          forceRoadmap(window.kakao, map);
+          map.relayout();
+          debugKakaoMap(label, getTileDiagnostics(container, map));
+        }, delay);
+        diagnosticTimers.push(timer);
+      });
+    };
 
     setIsLoading(true);
     setLoadError("");
@@ -477,34 +577,66 @@ export default function KakaoRouteMap({
           return;
         }
 
-        try {
-          const center = getMapCenter(normalizedStops);
-          const map = new kakao.maps.Map(mapRef.current, {
-            center: new kakao.maps.LatLng(center.lat, center.lng),
-            level: compact ? 8 : 7,
-            draggable: !compact,
-            scrollwheel: !compact,
-          });
-          kakaoMapRef.current = map;
-          window.requestAnimationFrame(() => {
-            if (!cancelled && kakaoMapRef.current === map) {
-              fitMapToStops(kakao, map, normalizedStops, compact);
-            }
-          });
-          setIsReady(true);
-          setIsLoading(false);
-        } catch (error) {
-          warnKakaoMap("Kakao map initialization failed", {
-            appKey: getAppKeyLabel(appKey),
-            error: error?.message || String(error),
-            containerSize: {
-              width: mapRef.current?.clientWidth || 0,
-              height: mapRef.current?.clientHeight || 0,
-            },
-          });
-          setLoadError("init-failed");
-          setIsLoading(false);
-        }
+        const initializeMap = (attempt = 0) => {
+          if (cancelled || !mapRef.current || kakaoMapRef.current) {
+            return;
+          }
+
+          const container = mapRef.current;
+          const metrics = getContainerMetrics(container);
+          debugKakaoMap("map container size", { attempt, ...metrics });
+
+          if (!hasRenderableSize(metrics) && attempt < 8) {
+            initFrame = window.requestAnimationFrame(() => {
+              initTimer = window.setTimeout(() => initializeMap(attempt + 1), 100);
+            });
+            return;
+          }
+
+          try {
+            const center = getMapCenter(normalizedStops);
+            const centerLatLng = new kakao.maps.LatLng(center.lat, center.lng);
+            const map = new kakao.maps.Map(container, {
+              center: centerLatLng,
+              level: 4,
+              mapTypeId: kakao.maps.MapTypeId.ROADMAP,
+              draggable: !compact,
+              scrollwheel: !compact,
+            });
+
+            kakaoMapRef.current = map;
+            forceRoadmap(kakao, map);
+            map.relayout();
+            map.setCenter(centerLatLng);
+
+            debugKakaoMap("map created", getTileDiagnostics(container, map));
+            scheduleDiagnostics(container, map, "tile diagnostics");
+
+            window.requestAnimationFrame(() => {
+              if (!cancelled && kakaoMapRef.current === map) {
+                forceRoadmap(kakao, map);
+                map.relayout();
+                fitMapToStops(kakao, map, normalizedStops, compact);
+                debugKakaoMap("post-layout diagnostics", getTileDiagnostics(container, map));
+              }
+            });
+
+            setIsReady(true);
+            setIsLoading(false);
+          } catch (error) {
+            warnKakaoMap("Kakao map initialization failed", {
+              appKey: getAppKeyLabel(appKey),
+              error: error?.message || String(error),
+              containerSize: getContainerMetrics(mapRef.current),
+            });
+            setLoadError("init-failed");
+            setIsLoading(false);
+          }
+        };
+
+        initFrame = window.requestAnimationFrame(() => {
+          initTimer = window.setTimeout(() => initializeMap(), 100);
+        });
       })
       .catch((error) => {
         warnKakaoMap("Kakao map SDK loading failed", {
@@ -517,11 +649,13 @@ export default function KakaoRouteMap({
 
     return () => {
       cancelled = true;
+      clearScheduledWork();
       clearOverlays(overlaysRef);
       if (polylineRef.current) {
         polylineRef.current.setMap(null);
         polylineRef.current = null;
       }
+      kakaoMapRef.current = null;
     };
   }, [appKey, appKeyIssue, compact, hasInvalidPrimaryAppKey, legacyAppKey, primaryAppKey]);
 
@@ -572,6 +706,28 @@ export default function KakaoRouteMap({
       polyline.setMap(map);
       polylineRef.current = polyline;
     }
+
+    forceRoadmap(kakao, map);
+    map.relayout();
+    debugKakaoMap("map overlay update", {
+      normalizedStops: normalizedStops.length,
+      markerStops: normalizedStops.length,
+      selectedStopId: selectedStop?.id || null,
+      ...getTileDiagnostics(mapRef.current, map),
+    });
+
+    const relayoutTimer = window.setTimeout(() => {
+      if (!kakaoMapRef.current || kakaoMapRef.current !== map) {
+        return;
+      }
+      forceRoadmap(kakao, map);
+      map.relayout();
+      debugKakaoMap("post-marker relayout", getTileDiagnostics(mapRef.current, map));
+    }, 200);
+
+    return () => {
+      window.clearTimeout(relayoutTimer);
+    };
   }, [isReady, normalizedStops, selectedStop?.id, onSelectStop, compact]);
 
   useEffect(() => {
@@ -579,7 +735,23 @@ export default function KakaoRouteMap({
       return;
     }
 
-    fitMapToStops(window.kakao, kakaoMapRef.current, normalizedStops, compact);
+    const kakao = window.kakao;
+    const map = kakaoMapRef.current;
+    forceRoadmap(kakao, map);
+    fitMapToStops(kakao, map, normalizedStops, compact);
+
+    const relayoutTimer = window.setTimeout(() => {
+      if (!kakaoMapRef.current || kakaoMapRef.current !== map) {
+        return;
+      }
+      forceRoadmap(kakao, map);
+      fitMapToStops(kakao, map, normalizedStops, compact);
+      debugKakaoMap("routeStops relayout", getTileDiagnostics(mapRef.current, map));
+    }, 220);
+
+    return () => {
+      window.clearTimeout(relayoutTimer);
+    };
   }, [isReady, stopPositionKey, compact, normalizedStops]);
 
   useEffect(() => {
@@ -587,8 +759,36 @@ export default function KakaoRouteMap({
       return;
     }
     const kakao = window.kakao;
-    kakaoMapRef.current.panTo(new kakao.maps.LatLng(selectedStop.lat, selectedStop.lng));
+    const map = kakaoMapRef.current;
+    forceRoadmap(kakao, map);
+    map.relayout();
+    map.panTo(new kakao.maps.LatLng(selectedStop.lat, selectedStop.lng));
   }, [isReady, selectedStop?.id, selectedStop?.lat, selectedStop?.lng]);
+
+  useEffect(() => {
+    if (!isReady || !kakaoMapRef.current || typeof window === "undefined" || !window.kakao?.maps) {
+      return;
+    }
+
+    let resizeTimer = 0;
+    const handleResize = () => {
+      window.clearTimeout(resizeTimer);
+      resizeTimer = window.setTimeout(() => {
+        if (!kakaoMapRef.current) {
+          return;
+        }
+        forceRoadmap(window.kakao, kakaoMapRef.current);
+        fitMapToStops(window.kakao, kakaoMapRef.current, normalizedStops, compact);
+        debugKakaoMap("window resize relayout", getTileDiagnostics(mapRef.current, kakaoMapRef.current));
+      }, 120);
+    };
+
+    window.addEventListener("resize", handleResize);
+    return () => {
+      window.clearTimeout(resizeTimer);
+      window.removeEventListener("resize", handleResize);
+    };
+  }, [isReady, stopPositionKey, compact, normalizedStops]);
 
   if (!appKey || loadError) {
     return (

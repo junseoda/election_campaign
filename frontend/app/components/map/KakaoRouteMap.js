@@ -56,10 +56,6 @@ export const DISTRICT_CENTER_COORDS = {
   "강동구": { lat: 37.5301, lng: 127.1238 },
 };
 
-function isFiniteCoord(value) {
-  return Number.isFinite(Number(value));
-}
-
 function normalizeAppKey(appKey) {
   return typeof appKey === "string" ? appKey.trim() : "";
 }
@@ -97,6 +93,51 @@ function debugKakaoMap(message, details = {}) {
     return;
   }
   console.info(`[KakaoMap] ${message}`, details);
+}
+
+function waitForKakaoMapsLoad(kakao, details = {}) {
+  return new Promise((resolve, reject) => {
+    if (!kakao?.maps?.load) {
+      reject(new Error("kakao.maps.load is unavailable"));
+      return;
+    }
+
+    try {
+      kakao.maps.load(() => {
+        debugKakaoMap("kakao.maps.load completed", {
+          ...details,
+          hasMapConstructor: Boolean(kakao?.maps?.Map),
+          hasRoadmapType: kakao?.maps?.MapTypeId?.ROADMAP !== undefined && kakao?.maps?.MapTypeId?.ROADMAP !== null,
+        });
+        resolve(kakao);
+      });
+    } catch (error) {
+      reject(error);
+    }
+  });
+}
+
+function toFiniteNumber(value) {
+  if (value === null || value === undefined || value === "") {
+    return null;
+  }
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function getValidMapCoord(latValue, lngValue) {
+  const lat = toFiniteNumber(latValue);
+  const lng = toFiniteNumber(lngValue);
+  if (lat === null || lng === null) {
+    return null;
+  }
+
+  // This service recommends campaign stops in Seoul, so reject null-derived 0,0 and other non-Korea coordinates.
+  if (lat < 33 || lat > 39.5 || lng < 124 || lng > 132.5) {
+    return null;
+  }
+
+  return { lat, lng };
 }
 
 function getContainerMetrics(container) {
@@ -137,6 +178,62 @@ function forceRoadmap(kakao, map) {
   }
 }
 
+function getMapRuntimeState(map) {
+  if (!map) {
+    return {
+      center: null,
+      level: null,
+      mapTypeId: getMapTypeId(map),
+    };
+  }
+
+  try {
+    const center = typeof map.getCenter === "function" ? map.getCenter() : null;
+    return {
+      center: center ? {
+        lat: typeof center.getLat === "function" ? center.getLat() : null,
+        lng: typeof center.getLng === "function" ? center.getLng() : null,
+      } : null,
+      level: typeof map.getLevel === "function" ? map.getLevel() : null,
+      mapTypeId: getMapTypeId(map),
+    };
+  } catch (error) {
+    return {
+      center: null,
+      level: null,
+      mapTypeId: getMapTypeId(map),
+      error: error?.message || String(error),
+    };
+  }
+}
+
+function extractCssUrlValues(value = "") {
+  const urls = [];
+  const pattern = /url\((["']?)(.*?)\1\)/gi;
+  let match = pattern.exec(value);
+  while (match) {
+    if (match[2]) {
+      urls.push(match[2]);
+    }
+    match = pattern.exec(value);
+  }
+  return urls;
+}
+
+function isKakaoUiImageUrl(url = "") {
+  return /\/mapjsapi\/images\//i.test(url) ||
+    /(?:transparent|bg_tile|white|m_bi|openhand|closedhand|cursor|control|marker)/i.test(url);
+}
+
+function isActualMapTileUrl(url = "") {
+  if (!url || isKakaoUiImageUrl(url)) {
+    return false;
+  }
+  return /\/\/map[0-4]\.daumcdn\.net\//i.test(url) ||
+    /\/\/mts\.daumcdn\.net\//i.test(url) ||
+    (/\/\/t[1-4]\.daumcdn\.net\//i.test(url) && /\/(?:map|map_2d|map_2d_hd|map_k3f|tiles?)\//i.test(url));
+}
+
 function getTileDiagnostics(container, map) {
   if (!container || typeof window === "undefined") {
     return {
@@ -145,47 +242,54 @@ function getTileDiagnostics(container, map) {
       mapCreated: Boolean(map),
       innerImgCount: 0,
       tileCandidateCount: 0,
+      actualTileCount: 0,
       mapTypeId: getMapTypeId(map),
+      mapState: getMapRuntimeState(map),
     };
   }
 
   const images = Array.from(container.querySelectorAll("img"));
-  const tileCandidates = Array.from(container.querySelectorAll("img, div")).filter((element) => {
-    const src = element.getAttribute("src") || "";
+  const allElements = Array.from(container.querySelectorAll("img, div"));
+  const imageSources = images.map((image) => image.getAttribute("src") || "").filter(Boolean);
+  const backgroundSources = allElements.flatMap((element) => {
     const style = window.getComputedStyle(element);
-    const backgroundImage = style.backgroundImage || "";
-    return /daumcdn|kakao|tile|map/i.test(`${src} ${backgroundImage}`);
+    return extractCssUrlValues(style.backgroundImage || "");
   });
+  const allSources = [...new Set([...imageSources, ...backgroundSources])];
+  const actualTileSources = allSources.filter(isActualMapTileUrl);
+  const kakaoUiImageSources = allSources.filter((src) => /daumcdn|kakao/i.test(src) && !isActualMapTileUrl(src));
 
   return {
     hasWindowKakao: Boolean(window.kakao),
     hasKakaoMaps: Boolean(window.kakao?.maps),
     mapCreated: Boolean(map),
     innerImgCount: images.length,
-    tileCandidateCount: tileCandidates.length,
-    tileSources: images
-      .map((image) => image.getAttribute("src") || "")
-      .filter((src) => /daumcdn|kakao|tile|map/i.test(src))
-      .slice(0, 8),
+    tileCandidateCount: actualTileSources.length,
+    actualTileCount: actualTileSources.length,
+    actualTileSources,
+    kakaoUiImageCount: kakaoUiImageSources.length,
+    kakaoUiImageSources,
+    tileSources: allSources,
     mapTypeId: getMapTypeId(map),
+    mapState: getMapRuntimeState(map),
     containerSize: getContainerMetrics(container),
   };
 }
 
 function normalizeCoord(stop) {
-  if (isFiniteCoord(stop.lat) && isFiniteCoord(stop.lng)) {
+  const originalCoord = getValidMapCoord(stop.lat, stop.lng);
+  if (originalCoord) {
     return {
-      lat: Number(stop.lat),
-      lng: Number(stop.lng),
+      ...originalCoord,
       hasExactCoord: true,
       coordSource: "original",
     };
   }
 
-  if (isFiniteCoord(stop.map_position?.lat) && isFiniteCoord(stop.map_position?.lng)) {
+  const mapPositionCoord = getValidMapCoord(stop.map_position?.lat, stop.map_position?.lng);
+  if (mapPositionCoord) {
     return {
-      lat: Number(stop.map_position.lat),
-      lng: Number(stop.map_position.lng),
+      ...mapPositionCoord,
       hasExactCoord: true,
       coordSource: "map_position",
     };
@@ -255,42 +359,59 @@ function getCoordBadge(stop) {
 }
 
 function getMapCenter(stops) {
-  if (!stops.length) {
+  const validStops = stops.filter((stop) => getValidMapCoord(stop.lat, stop.lng));
+  if (!validStops.length) {
     return SEOUL_CITY_HALL;
   }
 
-  const total = stops.reduce(
+  const total = validStops.reduce(
     (acc, stop) => ({
-      lat: acc.lat + stop.lat,
-      lng: acc.lng + stop.lng,
+      lat: acc.lat + Number(stop.lat),
+      lng: acc.lng + Number(stop.lng),
     }),
     { lat: 0, lng: 0 }
   );
 
   return {
-    lat: total.lat / stops.length,
-    lng: total.lng / stops.length,
+    lat: total.lat / validStops.length,
+    lng: total.lng / validStops.length,
   };
+}
+
+function getCoordSummary(stops = []) {
+  return stops.reduce((summary, stop) => {
+    if (getValidMapCoord(stop.lat, stop.lng)) {
+      summary.valid += 1;
+    } else {
+      summary.invalid += 1;
+    }
+    if (stop.coordSource) {
+      summary.bySource[stop.coordSource] = (summary.bySource[stop.coordSource] || 0) + 1;
+    }
+    return summary;
+  }, { valid: 0, invalid: 0, bySource: {} });
 }
 
 function fitMapToStops(kakao, map, stops, compact) {
   forceRoadmap(kakao, map);
   map.relayout();
 
-  if (!stops.length) {
+  const validStops = stops.filter((stop) => getValidMapCoord(stop.lat, stop.lng));
+
+  if (!validStops.length) {
     map.setCenter(new kakao.maps.LatLng(SEOUL_CITY_HALL.lat, SEOUL_CITY_HALL.lng));
     map.setLevel(compact ? 8 : 7);
     return;
   }
 
-  if (stops.length === 1) {
-    map.setCenter(new kakao.maps.LatLng(stops[0].lat, stops[0].lng));
+  if (validStops.length === 1) {
+    map.setCenter(new kakao.maps.LatLng(validStops[0].lat, validStops[0].lng));
     map.setLevel(compact ? 7 : 5);
     return;
   }
 
   const bounds = new kakao.maps.LatLngBounds();
-  stops.forEach((stop) => {
+  validStops.forEach((stop) => {
     bounds.extend(new kakao.maps.LatLng(stop.lat, stop.lng));
   });
   map.setBounds(
@@ -323,8 +444,10 @@ function loadKakaoSdk(appKey) {
   }
 
   if (window.kakao?.maps) {
-    return new Promise((resolve) => {
-      window.kakao.maps.load(() => resolve(window.kakao));
+    return waitForKakaoMapsLoad(window.kakao, {
+      scriptSrc: "existing-window-kakao",
+      autoload: false,
+      libraries: "none",
     });
   }
 
@@ -336,6 +459,13 @@ function loadKakaoSdk(appKey) {
     const sdkSrc = buildKakaoSdkSrc(normalizedAppKey);
     const maskedSdkSrc = buildMaskedKakaoSdkSrc(normalizedAppKey);
     let existingScript = document.getElementById(SDK_SCRIPT_ID);
+
+    debugKakaoMap("sdk script requested", {
+      scriptSrc: maskedSdkSrc,
+      autoload: false,
+      libraries: "none",
+      existingScript: Boolean(existingScript),
+    });
 
     if (existingScript && existingScript.src && existingScript.src !== sdkSrc) {
       existingScript.remove();
@@ -374,20 +504,22 @@ function loadKakaoSdk(appKey) {
         return;
       }
 
-      try {
-        window.kakao.maps.load(() => {
-          if (!window.kakao?.maps?.Map) {
-            rejectWithLog(
-              "Kakao map SDK loaded but kakao.maps.Map is unavailable",
-              new Error("Kakao map SDK loaded but kakao.maps.Map is unavailable")
-            );
-            return;
-          }
-          resolve(window.kakao);
-        });
-      } catch (error) {
+      waitForKakaoMapsLoad(window.kakao, {
+        scriptSrc: maskedSdkSrc,
+        autoload: false,
+        libraries: "none",
+      }).then((loadedKakao) => {
+        if (!loadedKakao?.maps?.Map) {
+          rejectWithLog(
+            "Kakao map SDK loaded but kakao.maps.Map is unavailable",
+            new Error("Kakao map SDK loaded but kakao.maps.Map is unavailable")
+          );
+          return;
+        }
+        resolve(loadedKakao);
+      }).catch((error) => {
         rejectWithLog("Kakao map SDK maps.load failed", error);
-      }
+      });
     };
 
     const script = existingScript || document.createElement("script");
@@ -522,6 +654,7 @@ export default function KakaoRouteMap({
       compact,
       hasAppKey: Boolean(appKey),
       stopsLength: normalizedStops.length,
+      coordSummary: getCoordSummary(normalizedStops),
       selectedStopId,
     });
   }, [appKey, compact, normalizedStops.length, selectedStopId]);
@@ -622,9 +755,15 @@ export default function KakaoRouteMap({
 
           try {
             const center = getMapCenter(normalizedStops);
-            const centerLatLng = new kakao.maps.LatLng(center.lat, center.lng);
+            const safeCenter = getValidMapCoord(center.lat, center.lng) || SEOUL_CITY_HALL;
+            debugKakaoMap("map center input", {
+              requestedCenter: center,
+              safeCenter,
+              centerIsValid: Boolean(getValidMapCoord(center.lat, center.lng)),
+              coordSummary: getCoordSummary(normalizedStops),
+            });
             const map = new kakao.maps.Map(container, {
-              center: centerLatLng,
+              center: new kakao.maps.LatLng(safeCenter.lat, safeCenter.lng),
               level: 4,
               mapTypeId: kakao.maps.MapTypeId.ROADMAP,
               draggable: !compact,
@@ -635,7 +774,7 @@ export default function KakaoRouteMap({
             forceRoadmap(kakao, map);
             debugKakaoMap("map created", {
               ...getTileDiagnostics(container, map),
-              center: { lat: center.lat, lng: center.lng },
+              center: safeCenter,
             });
             scheduleDiagnostics(container, map, "tile diagnostics");
 
@@ -643,7 +782,7 @@ export default function KakaoRouteMap({
               if (!cancelled && kakaoMapRef.current === map) {
                 forceRoadmap(kakao, map);
                 map.relayout();
-                map.setCenter(centerLatLng);
+                map.setCenter(new kakao.maps.LatLng(safeCenter.lat, safeCenter.lng));
                 forceRoadmap(kakao, map);
                 debugKakaoMap("post-create relayout 0ms", getTileDiagnostics(container, map));
               }
@@ -654,7 +793,7 @@ export default function KakaoRouteMap({
               if (!cancelled && kakaoMapRef.current === map) {
                 forceRoadmap(kakao, map);
                 map.relayout();
-                map.setCenter(centerLatLng);
+                map.setCenter(new kakao.maps.LatLng(safeCenter.lat, safeCenter.lng));
                 debugKakaoMap("post-create relayout 300ms", getTileDiagnostics(container, map));
               }
             }, 300);

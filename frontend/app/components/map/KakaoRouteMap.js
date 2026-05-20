@@ -96,7 +96,7 @@ function debugKakaoMap(message, details = {}) {
   if (typeof console === "undefined") {
     return;
   }
-  console.debug(`[KakaoMap] ${message}`, details);
+  console.info(`[KakaoMap] ${message}`, details);
 }
 
 function getContainerMetrics(container) {
@@ -131,14 +131,18 @@ function getMapTypeId(map) {
 }
 
 function forceRoadmap(kakao, map) {
-  if (kakao?.maps?.MapTypeId?.ROADMAP && typeof map?.setMapTypeId === "function") {
-    map.setMapTypeId(kakao.maps.MapTypeId.ROADMAP);
+  const roadmapType = kakao?.maps?.MapTypeId?.ROADMAP;
+  if (roadmapType !== undefined && roadmapType !== null && typeof map?.setMapTypeId === "function") {
+    map.setMapTypeId(roadmapType);
   }
 }
 
 function getTileDiagnostics(container, map) {
   if (!container || typeof window === "undefined") {
     return {
+      hasWindowKakao: false,
+      hasKakaoMaps: false,
+      mapCreated: Boolean(map),
       innerImgCount: 0,
       tileCandidateCount: 0,
       mapTypeId: getMapTypeId(map),
@@ -154,8 +158,15 @@ function getTileDiagnostics(container, map) {
   });
 
   return {
+    hasWindowKakao: Boolean(window.kakao),
+    hasKakaoMaps: Boolean(window.kakao?.maps),
+    mapCreated: Boolean(map),
     innerImgCount: images.length,
     tileCandidateCount: tileCandidates.length,
+    tileSources: images
+      .map((image) => image.getAttribute("src") || "")
+      .filter((src) => /daumcdn|kakao|tile|map/i.test(src))
+      .slice(0, 8),
     mapTypeId: getMapTypeId(map),
     containerSize: getContainerMetrics(container),
   };
@@ -507,6 +518,15 @@ export default function KakaoRouteMap({
   );
 
   useEffect(() => {
+    debugKakaoMap("component mounted", {
+      compact,
+      hasAppKey: Boolean(appKey),
+      stopsLength: normalizedStops.length,
+      selectedStopId,
+    });
+  }, [appKey, compact, normalizedStops.length, selectedStopId]);
+
+  useEffect(() => {
     if (hasInvalidPrimaryAppKey) {
       warnKakaoMap("NEXT_PUBLIC_KAKAO_MAP_API_KEY looks invalid", {
         appKey: getAppKeyLabel(primaryAppKey),
@@ -577,6 +597,13 @@ export default function KakaoRouteMap({
           return;
         }
 
+        debugKakaoMap("sdk ready", {
+          hasWindowKakao: Boolean(window.kakao),
+          hasKakaoMaps: Boolean(kakao?.maps),
+          hasMapConstructor: Boolean(kakao?.maps?.Map),
+          hasRoadmapType: kakao?.maps?.MapTypeId?.ROADMAP !== undefined && kakao?.maps?.MapTypeId?.ROADMAP !== null,
+        });
+
         const initializeMap = (attempt = 0) => {
           if (cancelled || !mapRef.current || kakaoMapRef.current) {
             return;
@@ -606,20 +633,41 @@ export default function KakaoRouteMap({
 
             kakaoMapRef.current = map;
             forceRoadmap(kakao, map);
-            map.relayout();
-            map.setCenter(centerLatLng);
-
-            debugKakaoMap("map created", getTileDiagnostics(container, map));
+            debugKakaoMap("map created", {
+              ...getTileDiagnostics(container, map),
+              center: { lat: center.lat, lng: center.lng },
+            });
             scheduleDiagnostics(container, map, "tile diagnostics");
 
-            window.requestAnimationFrame(() => {
+            const immediateRelayoutTimer = window.setTimeout(() => {
               if (!cancelled && kakaoMapRef.current === map) {
                 forceRoadmap(kakao, map);
                 map.relayout();
+                map.setCenter(centerLatLng);
+                forceRoadmap(kakao, map);
+                debugKakaoMap("post-create relayout 0ms", getTileDiagnostics(container, map));
+              }
+            }, 0);
+            diagnosticTimers.push(immediateRelayoutTimer);
+
+            const delayedRelayoutTimer = window.setTimeout(() => {
+              if (!cancelled && kakaoMapRef.current === map) {
+                forceRoadmap(kakao, map);
+                map.relayout();
+                map.setCenter(centerLatLng);
+                debugKakaoMap("post-create relayout 300ms", getTileDiagnostics(container, map));
+              }
+            }, 300);
+            diagnosticTimers.push(delayedRelayoutTimer);
+
+            const fitBoundsTimer = window.setTimeout(() => {
+              if (!cancelled && kakaoMapRef.current === map) {
+                forceRoadmap(kakao, map);
                 fitMapToStops(kakao, map, normalizedStops, compact);
                 debugKakaoMap("post-layout diagnostics", getTileDiagnostics(container, map));
               }
-            });
+            }, 420);
+            diagnosticTimers.push(fitBoundsTimer);
 
             setIsReady(true);
             setIsLoading(false);
@@ -803,8 +851,13 @@ export default function KakaoRouteMap({
   }
 
   return (
-    <div className={`kakao-map-card ${compact ? "compact" : ""} ${className}`}>
-      <div className="kakao-map-container" ref={mapRef} />
+    <div className={`kakao-map-card ${compact ? "compact" : ""} ${className}`} data-kakao-route-map="mounted">
+      <div
+        className="kakao-map-container"
+        ref={mapRef}
+        data-kakao-map-container="true"
+        style={{ minHeight: compact ? 285 : 430 }}
+      />
       {isLoading ? (
         <div className="map-skeleton">
           <strong>지도를 불러오고 있어요</strong>

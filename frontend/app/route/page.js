@@ -7,7 +7,6 @@ import {
   EmptyState,
   ErrorState,
   HeroHeader,
-  InsightCard,
   LoadingState,
   MetricCard,
   RouteTimeline,
@@ -396,21 +395,6 @@ function RouteSummary({ route }) {
   );
 }
 
-function RouteInsightStrip({ route }) {
-  const insights = route?.insights || [];
-  if (!insights.length) {
-    return null;
-  }
-
-  return (
-    <div className="routeInsightStrip">
-      {insights.map((insight) => (
-        <InsightCard key={insight} eyebrow="운영 인사이트" title={insight.replace("배치했습니다.", "배치합니다.")} tone="amber" />
-      ))}
-    </div>
-  );
-}
-
 function SwapPlaceModal({ item, options, onClose, onSwap }) {
   if (!item) {
     return null;
@@ -685,11 +669,6 @@ export default function RoutePlannerPage() {
                 isDirty={isDirty}
                 lastUpdated={lastUpdated}
               />
-              <InsightCard
-                eyebrow="추천 원칙"
-                title="출발지와 시간대에 맞춰 방문 순서를 정리합니다."
-                description="타깃, 자치구, 장소 유형, 최근 방문 이력을 함께 봅니다."
-              />
             </aside>
 
             <section className="routeResultPane">
@@ -742,12 +721,11 @@ export default function RoutePlannerPage() {
                   onSelect={(stopId) => handleSelectStop(stopId, false)}
                   itemRefs={timelineRefs}
                   savedStopIds={savedStopIds}
+                  showScoreDetails={false}
                 />
               </Section>
             </section>
           </div>
-
-          <RouteInsightStrip route={route} />
 
           <div className="mobileActionBar" aria-label="동선 추천 빠른 액션">
             <button type="button" onClick={handleSave}>{isSaved ? "저장됨" : "저장"}</button>

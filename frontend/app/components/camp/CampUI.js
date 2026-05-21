@@ -418,6 +418,8 @@ export async function postJson(path, payload) {
 }
 
 export function AppShell({ active = "home", children }) {
+  const showSidebarNote = active !== "route";
+
   return (
     <main className="appShell">
       <aside className="desktopSidebar" aria-label="선거비서 AI 데스크톱 내비게이션">
@@ -436,11 +438,13 @@ export function AppShell({ active = "home", children }) {
             </a>
           ))}
         </nav>
-        <div className="sidebarNote">
-          <span>운영 + 평가</span>
-          <strong>후보자용 운영 화면과 추천 품질 평가를 함께 제공합니다.</strong>
-          <p>동선 추천은 실제 후보 일정 데이터를 참고하고, 평가 수치는 별도 대시보드에서 확인합니다.</p>
-        </div>
+        {showSidebarNote ? (
+          <div className="sidebarNote">
+            <span>운영 + 평가</span>
+            <strong>후보자용 운영 화면과 추천 품질 평가를 함께 제공합니다.</strong>
+            <p>동선 추천은 실제 후보 일정 데이터를 참고하고, 평가 수치는 별도 대시보드에서 확인합니다.</p>
+          </div>
+        ) : null}
       </aside>
       <div className="appContent">{children}</div>
       <BottomNavigation active={active} />
@@ -747,6 +751,7 @@ export function RouteTimeline({
   onSelect,
   itemRefs,
   savedStopIds = [],
+  showScoreDetails = true,
 }) {
   if (!items.length) {
     return <EmptyState title="추천 동선이 없습니다" message="조건을 입력하고 동선 추천을 실행해주세요." />;
@@ -808,12 +813,14 @@ export function RouteTimeline({
                   <span>{buildChecklist(item).join(" / ")}</span>
                 </div>
                 <p className="sequenceText">{buildShortReason(item)}</p>
-                <details className="scoreDetails">
-                  <summary>점수 구성 보기</summary>
-                  <p className="reasonText expanded">{item.sequence_reason}</p>
-                  <p className="reasonText expanded">{item.recommendation_reason}</p>
-                  <RouteScoreBreakdown breakdown={item.score_breakdown} score={item.score} />
-                </details>
+                {showScoreDetails ? (
+                  <details className="scoreDetails">
+                    <summary>점수 구성 보기</summary>
+                    <p className="reasonText expanded">{item.sequence_reason}</p>
+                    <p className="reasonText expanded">{item.recommendation_reason}</p>
+                    <RouteScoreBreakdown breakdown={item.score_breakdown} score={item.score} />
+                  </details>
+                ) : null}
               </div>
             </div>
           </article>

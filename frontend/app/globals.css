@@ -2572,6 +2572,15 @@ button {
   pointer-events: none;
 }
 
+.kakao-map-container > div[style*="z-index: 1;"],
+.kakao-map-container > div[style*="z-index: 2;"] {
+  pointer-events: none;
+}
+
+.kakao-map-container > div[style*="z-index: 2;"] > div {
+  pointer-events: auto;
+}
+
 .kakao-route-marker,
 .kakao-map-overlay :is(a, button, [role="button"]),
 .map-floating-card :is(a, button, [role="button"]),

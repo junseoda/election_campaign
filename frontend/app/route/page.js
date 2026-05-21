@@ -11,7 +11,6 @@ import {
   MetricCard,
   RouteTimeline,
   Section,
-  STATIC_DEMO_MESSAGE,
   Tag,
   buildChecklist,
   buildShortReason,
@@ -435,7 +434,6 @@ export default function RoutePlannerPage() {
   const [selectedStopId, setSelectedStopId] = useState("stop-1");
   const [savedStopIds, setSavedStopIds] = useState([]);
   const [errorMessage, setErrorMessage] = useState("");
-  const [routeNotice, setRouteNotice] = useState("");
   const [toastMessage, setToastMessage] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -469,7 +467,6 @@ export default function RoutePlannerPage() {
     try {
       setIsLoading(true);
       setErrorMessage("");
-      setRouteNotice("");
       const [optionsPayload, samplePayload] = await Promise.all([
         fetchJson("/route/options"),
         fetchJson("/route/sample"),
@@ -514,7 +511,6 @@ export default function RoutePlannerPage() {
   const handleChange = useCallback((key, value) => {
     setForm((current) => ({ ...current, [key]: value }));
     setIsDirty(true);
-    setRouteNotice("");
   }, []);
 
   const handleToggleArray = useCallback((key, value) => {
@@ -523,7 +519,6 @@ export default function RoutePlannerPage() {
       [key]: toggleArrayValue(current?.[key] || [], value),
     }));
     setIsDirty(true);
-    setRouteNotice("");
   }, []);
 
   const runRecommendation = useCallback(async () => {
@@ -534,7 +529,6 @@ export default function RoutePlannerPage() {
     const requestPayload = normalizeRequest(form);
     try {
       setIsSubmitting(true);
-      setRouteNotice("");
       const payload = await postJson("/route/recommend", requestPayload);
       debugRoute("route response received", {
         endpoint: "/route/recommend",
@@ -561,7 +555,6 @@ export default function RoutePlannerPage() {
         endpoint: "/route/recommend",
         message: error.message,
       });
-      setRouteNotice("실시간 동선 API 응답이 지연되어 현재 표시 중인 동선을 유지합니다.");
     } finally {
       setIsSubmitting(false);
     }
@@ -631,29 +624,10 @@ export default function RoutePlannerPage() {
         eyebrow="AI 기반 하루 유세 동선"
         title={<>하루 유세 동선<br />만들기</>}
         description="출발지, 방문 지역, 타깃을 입력하면 시간대별 방문 순서를 추천합니다."
-        meta={
-          <div>
-            <span>추천 모델</span>
-            <strong>최적화 모델</strong>
-            <small>장소·시간대·중복 방문 보정</small>
-          </div>
-        }
       />
 
       {errorMessage ? <ErrorState message={errorMessage} onRetry={loadInitialData} /> : null}
       {isLoading ? <LoadingState title="동선 추천 데이터를 준비하고 있어요" /> : null}
-      {!isLoading && !errorMessage && (route?.static_fallback || options?.static_fallback) ? (
-        <div className="demoNotice" role="status">
-          <Tag tone="amber">데모 동선</Tag>
-          <span>{route?.fallback_message || options?.fallback_message || STATIC_DEMO_MESSAGE}</span>
-        </div>
-      ) : null}
-      {!isLoading && !errorMessage && routeNotice ? (
-        <div className="demoNotice" role="status">
-          <Tag tone="amber">응답 지연</Tag>
-          <span>{routeNotice}</span>
-        </div>
-      ) : null}
 
       {!isLoading && !errorMessage && form ? (
         <>

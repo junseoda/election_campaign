@@ -2568,6 +2568,17 @@ button {
   pointer-events: none;
 }
 
+.kakao-map-card > .map-skeleton:not(.soft) {
+  pointer-events: none;
+}
+
+.kakao-route-marker,
+.kakao-map-overlay :is(a, button, [role="button"]),
+.map-floating-card :is(a, button, [role="button"]),
+.map-legend :is(a, button, [role="button"]) {
+  pointer-events: auto;
+}
+
 .kakao-map-overlay {
   border-radius: 999px;
   padding: 9px 12px;

@@ -187,6 +187,24 @@ function forceRoadmap(kakao, map) {
   }
 }
 
+function enableMapInteractions(map) {
+  if (typeof map?.setDraggable === "function") {
+    map.setDraggable(true);
+  }
+  if (typeof map?.setZoomable === "function") {
+    map.setZoomable(true);
+  }
+}
+
+function addZoomControl(kakao, map) {
+  if (!kakao?.maps?.ZoomControl || !kakao.maps.ControlPosition?.RIGHT || typeof map?.addControl !== "function") {
+    return;
+  }
+
+  const zoomControl = new kakao.maps.ZoomControl();
+  map.addControl(zoomControl, kakao.maps.ControlPosition.RIGHT);
+}
+
 function getMapRuntimeState(map) {
   if (!map) {
     return {
@@ -779,12 +797,16 @@ export default function KakaoRouteMap({
               center: new kakao.maps.LatLng(safeCenter.lat, safeCenter.lng),
               level: 4,
               mapTypeId: kakao.maps.MapTypeId.ROADMAP,
-              draggable: !compact,
-              scrollwheel: !compact,
+              draggable: true,
+              scrollwheel: true,
+              disableDoubleClickZoom: false,
             });
 
             kakaoMapRef.current = map;
             forceRoadmap(kakao, map);
+            enableMapInteractions(map);
+            addZoomControl(kakao, map);
+
             if (ENABLE_KAKAO_MAP_DEBUG) {
               debugKakaoMap("map created", {
                 ...getTileDiagnostics(container, map),

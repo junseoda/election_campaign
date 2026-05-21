@@ -2531,6 +2531,8 @@ button {
   min-height: 420px;
   overflow: hidden;
   background: transparent;
+  pointer-events: auto;
+  touch-action: auto;
 }
 
 .kakao-map-card.compact .kakao-map-container {

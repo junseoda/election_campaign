@@ -29,7 +29,6 @@ const METRIC_TOOLTIPS = {
   "P@5": "상위 5개 추천 안에 정답 장소가 포함된 비율",
   "R@10": "정답 장소 중 상위 10개 추천에 포함된 비율",
   "NDCG@10": "정답에 가까운 장소가 상위에 배치되었는지 보는 지표",
-  "raw recall@50": "초기 후보군 50개 안에 실제 정답 장소가 포함된 비율",
 };
 
 const FEATURE_LABELS = {
@@ -144,17 +143,6 @@ export default function EvaluationDashboardPage() {
         eyebrow="Gold Set 기반 성능 평가"
         title="추천 품질을 확인합니다"
         description="실제 후보 일정으로 추천 결과를 검증합니다."
-        meta={
-          <div>
-            <span className="metricTooltip">
-              raw recall@50
-              <button type="button" aria-label="raw recall@50 설명">?</button>
-              <em>{METRIC_TOOLTIPS["raw recall@50"]}</em>
-            </span>
-            <strong>{formatPercent(rawRecall)}</strong>
-            <small>후보군 포함률</small>
-          </div>
-        }
       />
 
       {errorMessage ? <ErrorState message={errorMessage} onRetry={loadDashboard} /> : null}
@@ -241,7 +229,7 @@ export default function EvaluationDashboardPage() {
             <div className="coverageGrid">
               <MetricCard label="초기 후보군에 정답 있음" value={formatNumber(coverageSummary.raw_covered_count ?? 19)} caption="순위 재정렬 가능 일정" tone="green" />
               <MetricCard label="초기 후보군에 정답 없음" value={formatNumber(coverageSummary.raw_missing_count ?? 51)} caption="후보군 생성 한계" tone="amber" />
-              <MetricCard label="후보군 포함률" value={formatPercent(rawRecall)} caption="raw recall@50" />
+              <MetricCard label="후보군 포함률" value={formatPercent(rawRecall)} caption="초기 후보군 50개 기준" />
               <MetricCard label="Top-10 적중" value={formatPercent(coverageSummary.optimized_hit_at_10_rate ?? 0.2714285714285714)} caption="최적화 결과" tone="blue" />
             </div>
             <HitMissDonut

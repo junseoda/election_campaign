@@ -418,8 +418,6 @@ export async function postJson(path, payload) {
 }
 
 export function AppShell({ active = "home", children }) {
-  const showSidebarNote = active !== "route";
-
   return (
     <main className="appShell">
       <aside className="desktopSidebar" aria-label="선거비서 AI 데스크톱 내비게이션">
@@ -438,13 +436,6 @@ export function AppShell({ active = "home", children }) {
             </a>
           ))}
         </nav>
-        {showSidebarNote ? (
-          <div className="sidebarNote">
-            <span>운영 + 평가</span>
-            <strong>후보자용 운영 화면과 추천 품질 평가를 함께 제공합니다.</strong>
-            <p>동선 추천은 실제 후보 일정 데이터를 참고하고, 평가 수치는 별도 대시보드에서 확인합니다.</p>
-          </div>
-        ) : null}
       </aside>
       <div className="appContent">{children}</div>
       <BottomNavigation active={active} />

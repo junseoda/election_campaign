@@ -27,10 +27,15 @@ PLACE_TYPE_RECOMMENDATIONS = {
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Analyze raw candidate coverage and hit/miss patterns.")
     parser.add_argument("--gold", default="output/gold_set_evaluation_queries.csv")
-    parser.add_argument("--coverage", default="output/experiments_optimized/raw_candidate_coverage.csv")
-    parser.add_argument("--hit", default="output/experiments_optimized/optimized_proposed/hit_analysis.csv")
+    parser.add_argument("--coverage", default="", help="raw_candidate_coverage.csv. Defaults to <optimized_dir>/raw_candidate_coverage.csv")
+    parser.add_argument("--hit", default="", help="hit_analysis.csv. Defaults to <optimized_dir>/optimized_proposed/hit_analysis.csv")
     parser.add_argument("--raw", default="output/raw_baseline_recommendations.csv")
     parser.add_argument("--output_dir", default="output/experiments_optimized")
+    parser.add_argument(
+        "--optimized_dir",
+        default="",
+        help="Directory containing optimized outputs. If omitted, uses output_dir when files exist, then output/experiments_optimized.",
+    )
     return parser.parse_args()
 
 
@@ -328,8 +333,13 @@ def run(gold_path: Path, coverage_path: Path, hit_path: Path, raw_path: Path, ou
 
 def main() -> int:
     args = parse_args()
+    optimized_dir = Path(args.optimized_dir) if args.optimized_dir else Path(args.output_dir)
+    if not (optimized_dir / "raw_candidate_coverage.csv").exists():
+        optimized_dir = Path("output/experiments_optimized")
+    coverage_path = Path(args.coverage) if args.coverage else optimized_dir / "raw_candidate_coverage.csv"
+    hit_path = Path(args.hit) if args.hit else optimized_dir / "optimized_proposed" / "hit_analysis.csv"
     try:
-        run(Path(args.gold), Path(args.coverage), Path(args.hit), Path(args.raw), Path(args.output_dir))
+        run(Path(args.gold), coverage_path, hit_path, Path(args.raw), Path(args.output_dir))
     except (FileNotFoundError, ValueError) as exc:
         print(f"[ERROR] {exc}", file=sys.stderr)
         return 1

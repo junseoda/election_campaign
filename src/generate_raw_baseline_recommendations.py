@@ -35,10 +35,12 @@ from generate_recommendation_results import (  # noqa: E402
     select_top_k_for_query,
     validate_gold_queries,
 )
+from place_aliases import alias_candidates_for_query  # noqa: E402
 
 
 RAW_OUTPUT_COLUMNS = [
     "query_id",
+    "candidate_name",
     "date",
     "time",
     "district",
@@ -76,6 +78,16 @@ def parse_args() -> argparse.Namespace:
         default=200,
         help="Number of candidates to request from each existing recommender before raw selection",
     )
+    parser.add_argument(
+        "--use_alias_expansion",
+        action="store_true",
+        help="Add query-compatible candidates from data/processed/place_aliases.csv after the protected baseline Top10.",
+    )
+    parser.add_argument(
+        "--alias_path",
+        default="data/processed/place_aliases.csv",
+        help="Path to the place alias table used when --use_alias_expansion is enabled.",
+    )
     return parser.parse_args()
 
 
@@ -84,6 +96,8 @@ def build_raw_rows_for_query(
     cache: dict[tuple[str, str, str, int], list[dict[str, Any]]],
     top_k: int,
     candidate_pool: int,
+    use_alias_expansion: bool = False,
+    alias_path: str | None = None,
 ) -> list[dict[str, Any]]:
     query_id = clean_text(row["query_id"])
     query_district = clean_text(row["district"])
@@ -134,6 +148,24 @@ def build_raw_rows_for_query(
     # candidates up to top_k.  This freezes the old baseline while still giving
     # re-rankers a larger, identical candidate pool.
     selected = list(protected_baseline)
+
+    if use_alias_expansion:
+        alias_score = 0.45 if min_protected_score == float("inf") else max(0.01, min_protected_score - 0.0001)
+        for candidate in alias_candidates_for_query(row, alias_path):
+            candidate = candidate.copy()
+            candidate["score"] = round(max(score_value(candidate), alias_score), 4)
+            key = (
+                clean_text(candidate.get("name")),
+                clean_text(candidate.get("district_name")),
+                clean_text(candidate.get("place_type")),
+            )
+            if key in protected_keys:
+                continue
+            selected.append(candidate)
+            protected_keys.add(key)
+            if len(selected) >= top_k:
+                break
+
     additional_candidates = sorted(
         deduped_candidates,
         key=lambda candidate: (score_value(candidate), clean_text(candidate.get("name"))),
@@ -170,6 +202,7 @@ def build_raw_rows_for_query(
         raw_rows.append(
             {
                 "query_id": query_id,
+                "candidate_name": clean_text(row.get("candidate_name", "")),
                 "date": clean_text(row.get("date", "")),
                 "time": clean_text(row.get("time", "")),
                 "district": query_district,
@@ -192,6 +225,8 @@ def build_raw_baseline_recommendations(
     gold_queries: pd.DataFrame,
     top_k: int,
     candidate_pool: int,
+    use_alias_expansion: bool = False,
+    alias_path: str | None = None,
 ) -> pd.DataFrame:
     if top_k <= 0:
         raise DataValidationError("--top_k 값은 양의 정수여야 합니다.")
@@ -209,6 +244,8 @@ def build_raw_baseline_recommendations(
                 cache=cache,
                 top_k=top_k,
                 candidate_pool=candidate_pool,
+                use_alias_expansion=use_alias_expansion,
+                alias_path=alias_path,
             )
         )
 
@@ -218,12 +255,21 @@ def build_raw_baseline_recommendations(
     return raw_baseline
 
 
-def run(gold_path: Path, output_path: Path, top_k: int, candidate_pool: int) -> None:
+def run(
+    gold_path: Path,
+    output_path: Path,
+    top_k: int,
+    candidate_pool: int,
+    use_alias_expansion: bool = False,
+    alias_path: str | None = None,
+) -> None:
     gold_queries = read_csv_with_fallback(gold_path)
     raw_baseline = build_raw_baseline_recommendations(
         gold_queries=gold_queries,
         top_k=top_k,
         candidate_pool=candidate_pool,
+        use_alias_expansion=use_alias_expansion,
+        alias_path=alias_path,
     )
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -240,7 +286,14 @@ def run(gold_path: Path, output_path: Path, top_k: int, candidate_pool: int) -> 
 def main() -> int:
     args = parse_args()
     try:
-        run(Path(args.gold), Path(args.output), args.top_k, args.candidate_pool)
+        run(
+            Path(args.gold),
+            Path(args.output),
+            args.top_k,
+            args.candidate_pool,
+            use_alias_expansion=args.use_alias_expansion,
+            alias_path=args.alias_path,
+        )
     except (FileNotFoundError, DataValidationError, ValueError) as exc:
         print(f"[ERROR] {exc}", file=sys.stderr)
         return 1

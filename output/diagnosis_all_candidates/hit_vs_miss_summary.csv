@@ -1,0 +1,52 @@
+﻿group_level,group_value,query_count,raw_covered_count,raw_missing_count,raw_coverage_rate,hit_at_1_count,hit_at_3_count,hit_at_5_count,hit_at_10_count,hit_at_10_rate,avg_raw_candidate_count,diagnosis
+campaign_activity_type,지역상권방문,43,43,0,1.0,9,23,29,39,0.9069767441860465,40.651162790697676,후보는 있으나 reranking 또는 명칭 매칭 개선 여지
+campaign_activity_type,현장방문,40,40,0,1.0,15,25,28,38,0.95,45.95,후보는 있으나 reranking 또는 명칭 매칭 개선 여지
+campaign_activity_type,거리유세,29,29,0,1.0,11,23,25,29,1.0,48.89655172413793,후보군 coverage와 reranking이 상대적으로 양호
+campaign_activity_type,거리인사,17,17,0,1.0,5,10,12,17,1.0,41.88235294117647,후보군 coverage와 reranking이 상대적으로 양호
+campaign_activity_type,행사참석,12,12,0,1.0,4,5,6,11,0.9166666666666666,33.416666666666664,후보는 있으나 reranking 또는 명칭 매칭 개선 여지
+campaign_activity_type,방문인사,9,9,0,1.0,2,5,7,8,0.8888888888888888,43.333333333333336,후보는 있으나 reranking 또는 명칭 매칭 개선 여지
+campaign_activity_type,체육행사,6,6,0,1.0,0,2,3,6,1.0,40.0,후보군 coverage와 reranking이 상대적으로 양호
+campaign_activity_type,복지현장방문,4,4,0,1.0,0,4,4,4,1.0,22.25,후보군 coverage와 reranking이 상대적으로 양호
+campaign_activity_type,기념행사,3,3,0,1.0,1,2,2,2,0.6666666666666666,41.0,후보는 있으나 reranking 또는 명칭 매칭 개선 여지
+campaign_activity_type,출근인사,2,2,0,1.0,1,2,2,2,1.0,50.0,후보군 coverage와 reranking이 상대적으로 양호
+campaign_activity_type,간담회,1,1,0,1.0,0,0,0,1,1.0,50.0,후보군 coverage와 reranking이 상대적으로 양호
+campaign_activity_type,정책간담회,1,1,0,1.0,0,1,1,1,1.0,50.0,후보군 coverage와 reranking이 상대적으로 양호
+campaign_activity_type,종교행사,1,1,0,1.0,0,0,0,0,0.0,50.0,후보는 있으나 reranking 또는 명칭 매칭 개선 여지
+campaign_activity_type,퇴근인사,1,1,0,1.0,1,1,1,1,1.0,50.0,후보군 coverage와 reranking이 상대적으로 양호
+district,영등포구,13,13,0,1.0,3,6,6,13,1.0,39.15384615384615,후보군 coverage와 reranking이 상대적으로 양호
+district,광진구,12,12,0,1.0,5,9,10,11,0.9166666666666666,49.083333333333336,후보는 있으나 reranking 또는 명칭 매칭 개선 여지
+district,성동구,12,12,0,1.0,3,5,7,10,0.8333333333333334,34.25,후보는 있으나 reranking 또는 명칭 매칭 개선 여지
+district,중구,11,11,0,1.0,2,6,8,10,0.9090909090909091,40.18181818181818,후보는 있으나 reranking 또는 명칭 매칭 개선 여지
+district,종로구,10,10,0,1.0,2,3,3,7,0.7,41.0,후보는 있으나 reranking 또는 명칭 매칭 개선 여지
+district,노원구,9,9,0,1.0,2,7,9,9,1.0,43.888888888888886,후보군 coverage와 reranking이 상대적으로 양호
+district,송파구,9,9,0,1.0,0,4,5,9,1.0,39.333333333333336,후보군 coverage와 reranking이 상대적으로 양호
+district,강남구,7,7,0,1.0,0,2,3,7,1.0,50.0,후보군 coverage와 reranking이 상대적으로 양호
+district,마포구,7,7,0,1.0,1,4,5,6,0.8571428571428571,35.142857142857146,후보는 있으나 reranking 또는 명칭 매칭 개선 여지
+district,서대문구,7,7,0,1.0,2,6,7,7,1.0,42.42857142857143,후보군 coverage와 reranking이 상대적으로 양호
+district,중랑구,7,7,0,1.0,2,4,4,5,0.7142857142857143,50.0,후보는 있으나 reranking 또는 명칭 매칭 개선 여지
+district,강동구,6,6,0,1.0,3,5,5,6,1.0,39.0,후보군 coverage와 reranking이 상대적으로 양호
+district,도봉구,6,6,0,1.0,2,4,4,6,1.0,43.166666666666664,후보군 coverage와 reranking이 상대적으로 양호
+district,동작구,6,6,0,1.0,2,4,5,6,1.0,50.0,후보군 coverage와 reranking이 상대적으로 양호
+district,서초구,6,6,0,1.0,2,2,2,6,1.0,50.0,후보군 coverage와 reranking이 상대적으로 양호
+district,양천구,6,6,0,1.0,3,6,6,6,1.0,50.0,후보군 coverage와 reranking이 상대적으로 양호
+district,강서구,5,5,0,1.0,3,4,5,5,1.0,36.2,후보군 coverage와 reranking이 상대적으로 양호
+district,구로구,5,5,0,1.0,0,4,4,5,1.0,35.8,후보군 coverage와 reranking이 상대적으로 양호
+district,동대문구,5,5,0,1.0,2,3,5,5,1.0,45.0,후보군 coverage와 reranking이 상대적으로 양호
+district,성북구,5,5,0,1.0,3,3,4,5,1.0,45.0,후보군 coverage와 reranking이 상대적으로 양호
+district,용산구,4,4,0,1.0,2,4,4,4,1.0,47.25,후보군 coverage와 reranking이 상대적으로 양호
+district,강북구,3,3,0,1.0,2,3,3,3,1.0,38.0,후보군 coverage와 reranking이 상대적으로 양호
+district,관악구,3,3,0,1.0,0,1,2,3,1.0,50.0,후보군 coverage와 reranking이 상대적으로 양호
+district,은평구,3,3,0,1.0,2,3,3,3,1.0,50.0,후보군 coverage와 reranking이 상대적으로 양호
+district,금천구,2,2,0,1.0,1,1,1,2,1.0,50.0,후보군 coverage와 reranking이 상대적으로 양호
+overall,ALL,169,169,0,1.0,49,103,120,159,0.9408284023668639,42.95266272189349,후보는 있으나 reranking 또는 명칭 매칭 개선 여지
+place_type,교통거점,36,36,0,1.0,15,29,32,36,1.0,50.0,후보군 coverage와 reranking이 상대적으로 양호
+place_type,전통시장,35,35,0,1.0,8,21,26,31,0.8857142857142857,40.542857142857144,후보는 있으나 reranking 또는 명칭 매칭 개선 여지
+place_type,공원,30,30,0,1.0,10,16,19,29,0.9666666666666667,42.06666666666667,후보는 있으나 reranking 또는 명칭 매칭 개선 여지
+place_type,정책현장,17,17,0,1.0,2,6,10,17,1.0,48.0,후보군 coverage와 reranking이 상대적으로 양호
+place_type,골목상권,15,15,0,1.0,2,6,7,13,0.8666666666666667,37.53333333333333,후보는 있으나 reranking 또는 명칭 매칭 개선 여지
+place_type,재개발/도시개발현장,11,11,0,1.0,6,10,10,11,1.0,50.0,후보군 coverage와 reranking이 상대적으로 양호
+place_type,체육시설,9,9,0,1.0,2,4,5,9,1.0,32.44444444444444,후보군 coverage와 reranking이 상대적으로 양호
+place_type,복지시설,8,8,0,1.0,2,8,8,8,1.0,23.25,후보군 coverage와 reranking이 상대적으로 양호
+place_type,노동현장,6,6,0,1.0,1,2,2,4,0.6666666666666666,45.833333333333336,후보는 있으나 reranking 또는 명칭 매칭 개선 여지
+place_type,어린이/가족시설,1,1,0,1.0,1,1,1,1,1.0,46.0,후보군 coverage와 reranking이 상대적으로 양호
+place_type,종교시설,1,1,0,1.0,0,0,0,0,0.0,50.0,후보는 있으나 reranking 또는 명칭 매칭 개선 여지

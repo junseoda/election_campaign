@@ -241,7 +241,11 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Optimize explainable re-ranking weights.")
     parser.add_argument("--gold", required=True, help="Path to gold_set_evaluation_queries.csv")
     parser.add_argument("--raw", required=True, help="Path to raw_baseline_recommendations.csv")
-    parser.add_argument("--existing_comparison", required=True, help="Path to output/experiments/model_comparison.csv")
+    parser.add_argument(
+        "--existing_comparison",
+        default="",
+        help="Path to output/experiments/model_comparison.csv. If omitted, baseline/proposed rows are recomputed from the current raw file.",
+    )
     parser.add_argument("--output_dir", required=True, help="Directory for optimized experiment artifacts")
     parser.add_argument("--top_k", type=int, default=10)
     parser.add_argument("--k", nargs="+", type=int, default=[1, 3, 5, 10])
@@ -770,6 +774,37 @@ def convert_existing_comparison(path: Path) -> pd.DataFrame:
     return pd.DataFrame(rows, columns=COMPARISON_COLUMNS)
 
 
+def build_comparison_from_current(gold: pd.DataFrame, raw: pd.DataFrame, k_values: list[int], top_k: int) -> pd.DataFrame:
+    from run_model_experiments import MODEL_VARIANTS, build_recommendation_results_from_raw, flatten_summary
+
+    rows: list[dict[str, Any]] = []
+    for model_name in MODEL_VARIANTS:
+        recommendations = build_recommendation_results_from_raw(raw, model_name, top_k)
+        _, summary = evaluate(gold, recommendations, k_values)
+        rows.append(flatten_summary(model_name, summary, sorted(set(k_values))))
+
+    converted: list[dict[str, Any]] = []
+    for row in rows:
+        converted_row = {
+            "model_name": row["model_name"],
+            "P@1": float(row.get("precision_at_1", 0.0)),
+            "P@3": float(row.get("precision_at_3", 0.0)),
+            "P@5": float(row.get("precision_at_5", 0.0)),
+            "P@10": float(row.get("precision_at_10", 0.0)),
+            "R@1": float(row.get("recall_at_1", 0.0)),
+            "R@3": float(row.get("recall_at_3", 0.0)),
+            "R@5": float(row.get("recall_at_5", 0.0)),
+            "R@10": float(row.get("recall_at_10", 0.0)),
+            "NDCG@1": float(row.get("ndcg_at_1", 0.0)),
+            "NDCG@3": float(row.get("ndcg_at_3", 0.0)),
+            "NDCG@5": float(row.get("ndcg_at_5", 0.0)),
+            "NDCG@10": float(row.get("ndcg_at_10", 0.0)),
+        }
+        converted_row["optimization_score"] = optimization_score(converted_row)
+        converted.append(converted_row)
+    return pd.DataFrame(converted, columns=COMPARISON_COLUMNS)
+
+
 def match_candidate(candidate: pd.Series, gold_row: pd.Series) -> bool:
     return place_match_method(candidate, gold_row) is not None
 
@@ -978,7 +1013,10 @@ def run(
     coverage = build_raw_candidate_coverage(gold, raw, optimized_recommendations)
     coverage.to_csv(output_dir / "raw_candidate_coverage.csv", index=False, encoding="utf-8-sig")
 
-    existing_comparison = convert_existing_comparison(existing_comparison_path)
+    if existing_comparison_path.is_file():
+        existing_comparison = convert_existing_comparison(existing_comparison_path)
+    else:
+        existing_comparison = build_comparison_from_current(gold, raw, k_values, top_k)
     optimized_row = pd.DataFrame([metric_row_from_summary("optimized_proposed", full_summary)])
     comparison = pd.concat([existing_comparison, optimized_row], ignore_index=True)[COMPARISON_COLUMNS]
     comparison.to_csv(output_dir / "model_comparison_optimized.csv", index=False, encoding="utf-8-sig")
@@ -1041,7 +1079,7 @@ def main() -> int:
         run(
             gold_path=Path(args.gold),
             raw_path=Path(args.raw),
-            existing_comparison_path=Path(args.existing_comparison),
+            existing_comparison_path=Path(args.existing_comparison) if args.existing_comparison else Path(""),
             output_dir=Path(args.output_dir),
             top_k=args.top_k,
             k_values=args.k,

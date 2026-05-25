@@ -1,0 +1,12 @@
+﻿source_group,file_path,input_rows,loaded,note
+existing,data\full_정원오_gold_set_20260309_20260516.csv,186,True,
+existing,gold set수작업\정원오 유세일정 csv 추출 set\full_정원오_gold_set_20260309_20260516.csv,186,True,
+existing,gold set수작업\정원오 유세일정 csv 추출 set\정원오_gold_set_20260309_20260405.csv,54,True,
+existing,gold set수작업\정원오 유세일정 csv 추출 set\정원오_gold_set_20260406_20260428.csv,64,True,
+existing,gold set수작업\정원오 유세일정 csv 추출 set\정원오_gold_set_20260429_20260516.csv,68,True,
+existing,output\gold_set_all_merged.csv,186,True,
+new,output\gold_set_normalized_new.csv,205,True,
+summary,existing_files,744,True,
+summary,new_file,205,True,
+summary,duplicate_removed,558,True,candidate/date/time/district/place/event/source_image key
+summary,final_rows,391,True,

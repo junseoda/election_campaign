@@ -14,15 +14,19 @@ out
 
 # Python cache
 __pycache__/
+*.py[cod]
 *.pyc
 *.pyo
 *.pyd
+.pytest_cache/
 
 # Node / Next
 node_modules/
 .next/
 out/
 .vercel/
+frontend/.next/
+frontend/node_modules/
 
 # Env
 .env
@@ -52,7 +56,17 @@ gold set수작업/**/*.jpg
 gold set수작업/**/*.jpeg
 gold set수작업/**/*.png
 
+data/raw/schedules/
+output/contact_sheets/
+
+# OS files
+Thumbs.db
+
 # Repeated test outputs
 output/experiments_optimized_test/
 output/experiments_optimized_test1/
 output/experiments_optimized_test10b/
+output/backups/
+output/gold_set_drafts/
+output/improved/
+output/quality_checks.json

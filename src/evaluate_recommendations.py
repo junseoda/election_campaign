@@ -17,6 +17,8 @@ from typing import Any
 
 import pandas as pd
 
+from place_aliases import names_match_by_alias, standardize_district
+
 
 GOLD_REQUIRED_COLUMNS = ["query_id", "gold_id", "place_name", "district", "relevance"]
 RECOMMENDATION_REQUIRED_COLUMNS = ["query_id", "rank", "recommended_place_name"]
@@ -95,8 +97,8 @@ def place_match_method(recommendation: pd.Series, gold: pd.Series) -> str | None
     if not rec_name or not gold_name:
         return None
 
-    rec_district = clean_text(recommendation.get("recommended_district", ""))
-    gold_district = clean_text(gold.get("district", ""))
+    rec_district = standardize_district(recommendation.get("recommended_district", ""))
+    gold_district = standardize_district(gold.get("district", ""))
     if rec_district and gold_district and rec_district != gold_district:
         return None
 
@@ -108,6 +110,8 @@ def place_match_method(recommendation: pd.Series, gold: pd.Series) -> str | None
 
     if rec_key and gold_key and rec_key == gold_key:
         return "normalized"
+    if names_match_by_alias(rec_name, gold_name, rec_district, gold_district):
+        return "alias"
     if rec_key and gold_key and is_partial_match(rec_key, gold_key):
         return "partial"
 
@@ -206,7 +210,7 @@ def find_best_match(
     gold_rows: pd.DataFrame,
     used_gold_item_ids: set[str],
 ) -> dict[str, Any] | None:
-    method_priority = {"exact": 3, "normalized": 2, "partial": 1}
+    method_priority = {"exact": 4, "alias": 3, "normalized": 2, "partial": 1}
     candidates: list[dict[str, Any]] = []
 
     for _, gold in gold_rows.iterrows():

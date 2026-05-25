@@ -1,0 +1,185 @@
+﻿canonical_name,alias_name,district,place_type,source,note
+남대문시장,남대문시장 입구,중구,전통시장,manual_alias_seed,market entrance alias
+남대문시장,남대문시장 남문,중구,전통시장,manual_alias_seed,market gate alias
+남대문시장,남대문시장 회현역 방면,중구,전통시장,manual_alias_seed,nearby station alias
+황학시장,황학시장 입구,중구,전통시장,manual_alias_seed,market entrance alias
+영등포전통시장,영등포전통시장 남문,영등포구,전통시장,manual_alias_seed,market gate alias
+대림중앙시장,대림중앙시장,영등포구,전통시장,manual_alias_seed,canonical market alias
+공릉도깨비시장,공릉도깨비시장,노원구,전통시장,manual_alias_seed,missing market source alias
+동원시장,동원시장,중랑구,전통시장,manual_alias_seed,missing market source alias
+우림시장,우림시장,중랑구,전통시장,manual_alias_seed,missing market source alias
+가락몰 농수산물시장,가락몰 농수산물시장,송파구,전통시장,manual_alias_seed,agricultural market alias
+가락몰 농수산물시장,가락시장 농수산물시장,송파구,전통시장,manual_alias_seed,common market alias
+금천현대시장,금천 현대시장,금천구,전통시장,manual_alias_seed,spacing alias
+건대 맛의거리,건대 맛의거리,광진구,골목상권,manual_alias_seed,commercial street alias
+건대 맛의거리,건대입구 맛의거리,광진구,골목상권,manual_alias_seed,station commercial street alias
+성북천 상점가,성북천 상점가,성북구,골목상권,manual_alias_seed,commercial street alias
+북촌의 봄,북촌의 봄,종로구,골목상권,manual_alias_seed,local commercial venue alias
+아지오 성수점,아지오 성수점,성동구,골목상권,manual_alias_seed,local commercial venue alias
+서울고속버스터미널 지하상가,서울고속버스터미널 지하상가,서초구,골목상권,manual_alias_seed,underground shopping district alias
+정동길 투썸플레이스,투썸플레이스 정동길점,중구,골목상권,manual_alias_seed,small business meeting venue alias
+성수역,성수역 3번출구 앞,성동구,골목상권,manual_alias_seed,station exit commercial alias
+성수동 카페거리,성수동 카페거리,성동구,골목상권,manual_alias_seed,commercial street alias
+강남역,강남역 일대,강남구,교통거점,manual_alias_seed,station area alias
+강남역,강남역 11번 출구,강남구,교통거점,manual_alias_seed,station exit alias
+왕십리역,왕십리역 광장,성동구,교통거점,manual_alias_seed,station plaza alias
+왕십리역,왕십리역 6번 출구,성동구,교통거점,manual_alias_seed,station exit alias
+청계천,청계천 산책로,종로구,공원,manual_alias_seed,stream walkway alias
+청계광장,청계광장,종로구,공원,manual_alias_seed,public plaza alias
+도림천,도림천,관악구,공원,manual_alias_seed,stream walkway source expansion
+응봉산 팔각정,응봉산 팔각정,성동구,공원,manual_alias_seed,park observatory alias
+장안동 벚꽃길,장안동 벚꽃길,동대문구,공원,manual_alias_seed,walking path alias
+파리공원,파리공원,양천구,공원,manual_alias_seed,park source expansion
+양재천 수변무대,양재천 수변무대 일대,양천구,공원,manual_alias_seed,stream stage alias
+홍제천 인공폭포,홍제천 인공폭포,서대문구,공원,manual_alias_seed,stream landmark alias
+불암산철쭉동산,불암산철쭉동산,노원구,공원,manual_alias_seed,park festival venue alias
+불광천,불광천,은평구,공원,manual_alias_seed,stream walkway source expansion
+잠수대교 남단,잠수대교 남단,서초구,공원,manual_alias_seed,han river running venue alias
+샛강생태공원,샛강생태공원,영등포구,공원,manual_alias_seed,ecological park alias
+먹골역 7번출구,먹골역 7번출구 앞,중랑구,공원,manual_alias_seed,festival station-side park alias
+잠실학생체육관,잠실학생체육관,송파구,체육시설,manual_alias_seed,sports facility alias
+마들스포츠타운,마들스포츠타운,노원구,체육시설,manual_alias_seed,sports facility alias
+서울월드컵경기장,마포구 월드컵로 251,마포구,체육시설,manual_alias_seed,address to sports venue alias
+효창운동장,효창운동장,용산구,체육시설,manual_alias_seed,sports ground alias
+잠실종합운동장,잠실종합운동장,송파구,체육시설,manual_alias_seed,sports complex alias
+잠실실내체육관,잠실실내체육관,송파구,체육시설,manual_alias_seed,indoor sports venue alias
+구립수락노인종합복지관,구립수락노인종합복지관,노원구,복지시설,manual_alias_seed,welfare facility alias
+궁동종합사회복지관,궁동종합사회복지관,구로구,복지시설,manual_alias_seed,welfare facility alias
+광야홈리스복지센터,광야홈리스복지센터,영등포구,복지시설,manual_alias_seed,welfare facility alias
+밥퍼나눔운동본부,밥퍼나눔운동본부,동대문구,복지시설,manual_alias_seed,welfare field alias
+장충체육관,장충체육관,중구,복지시설,manual_alias_seed,senior event venue alias
+세종대로 사거리 광화문광장,세종대로 사거리 광화문 광장,종로구,교통거점,manual_alias_seed,major intersection plaza alias
+고덕비즈밸리역 공사현장,고덕비즈밸리역 공사현장,강동구,교통거점,manual_alias_seed,transport construction site alias
+정릉공영차고지,정릉공영차고지,성북구,교통거점,manual_alias_seed,bus depot transport hub alias
+명일동 싱크홀 현장,명일동 싱크홀 현장,강동구,정책현장,manual_alias_seed,policy field site alias
+고덕비즈밸리,고덕비즈밸리,강동구,정책현장,manual_alias_seed,industrial policy site alias
+광수약국,광수약국,서초구,정책현장,manual_alias_seed,livelihood policy site alias
+한국거래소,한국거래소,영등포구,정책현장,manual_alias_seed,financial policy site alias
+마곡 LG사이언스파크 ISC동,마곡 LG사이언스파크 ISC동,강서구,정책현장,manual_alias_seed,future industry policy site alias
+장위14주택재개발구역,장위14주택재개발구역,성북구,재개발/도시개발현장,manual_alias_seed,redevelopment site alias
+송파 거여새마을지구 공공재개발 현장,송파 거여새마을지구 공공재개발 현장,송파구,재개발/도시개발현장,manual_alias_seed,public redevelopment site alias
+개포우성7차아파트 1015~105동 사이,개포우성7차아파트 1015~105동 사이,강남구,재개발/도시개발현장,manual_alias_seed,reconstruction site alias
+신정차량사업소,신정차량사업소,양천구,노동현장,manual_alias_seed,rail labor site alias
+양천공영차고지,양천공영차고지,양천구,노동현장,manual_alias_seed,bus labor site alias
+여의도공원 10번 출구,여의도공원 10번 출구,영등포구,노동현장,manual_alias_seed,labor day gathering venue alias
+여의도공원 3동 무궁화화장실,여의도공원 3동 무궁화화장실 앞,영등포구,노동현장,manual_alias_seed,labor interview venue alias
+황인재문,황인재문,종로구,종교시설,manual_alias_seed,religious festival venue alias
+쌍리단길·생문시장,쌍리단길·생문시장,성동구,골목상권,gold_schedule_manual_20260525,new schedule strong-positive alias expansion
+서울배달라이더 현장,서울배달라이더 현장,종로구,노동현장,gold_schedule_manual_20260525,new schedule strong-positive alias expansion
+서울숲,서울숲,성동구,공원,gold_schedule_manual_20260525,new schedule strong-positive alias expansion
+서울숲 야외무대,서울숲 야외무대,성동구,공원,gold_schedule_manual_20260525,new schedule strong-positive alias expansion
+상암동 월드컵공원,상암동 월드컵공원,마포구,체육시설,gold_schedule_manual_20260525,new schedule strong-positive alias expansion
+상경청년 자취방,상경청년 자취방,성북구,정책현장,gold_schedule_manual_20260525,new schedule strong-positive alias expansion
+온수역,온수역,구로구,정책현장,gold_schedule_manual_20260525,new schedule strong-positive alias expansion
+서울광장,서울광장,중구,공원,gold_schedule_manual_20260525,new schedule strong-positive alias expansion
+DDP,DDP,중구,정책현장,gold_schedule_manual_20260525,new schedule strong-positive alias expansion
+예술의전당,예술의전당,서초구,공원,gold_schedule_manual_20260525,new schedule strong-positive alias expansion
+마장동축산물시장,마장동축산물시장,성동구,전통시장,gold_schedule_manual_20260525,new schedule strong-positive alias expansion
+대림1구역 재개발 현장,대림1구역 재개발 현장,영등포구,재개발/도시개발현장,gold_schedule_manual_20260525,new schedule strong-positive alias expansion
+구의2동 주택재개발 후보지,구의2동 주택재개발 후보지,광진구,재개발/도시개발현장,gold_schedule_manual_20260525,new schedule strong-positive alias expansion
+서울장애인종합복지관,서울장애인종합복지관,중구,복지시설,gold_schedule_manual_20260525,new schedule strong-positive alias expansion
+가좌역광장,가좌역광장,서대문구,공원,gold_schedule_manual_20260525,new schedule strong-positive alias expansion
+청량리 경동시장 일대,청량리 경동시장 일대,동대문구,전통시장,gold_schedule_manual_20260525,new schedule strong-positive alias expansion
+고척1동 이동약자 현장,고척1동 이동약자 현장,구로구,정책현장,gold_schedule_manual_20260525,new schedule strong-positive alias expansion
+광화문광장 감사의정원,광화문광장 감사의정원,종로구,공원,gold_schedule_manual_20260525,new schedule strong-positive alias expansion
+잠실 MICE 현장,잠실 MICE 현장,송파구,정책현장,gold_schedule_manual_20260525,new schedule strong-positive alias expansion
+공릉동,공릉동,노원구,정책현장,gold_schedule_manual_20260525,new schedule strong-positive alias expansion
+잠실보조경기장,잠실보조경기장,송파구,체육시설,gold_schedule_manual_20260525,new schedule strong-positive alias expansion
+중랑 서울장미축제,중랑 서울장미축제,중랑구,공원,gold_schedule_manual_20260525,new schedule strong-positive alias expansion
+서울 청년취업사관학교,서울 청년취업사관학교,영등포구,정책현장,gold_schedule_manual_20260525,new schedule strong-positive alias expansion
+서울시 창업지원시설,서울시 창업지원시설,영등포구,정책현장,gold_schedule_manual_20260525,new schedule strong-positive alias expansion
+창신동쪽방촌 온기창고,창신동쪽방촌 온기창고,종로구,복지시설,gold_schedule_manual_20260525,new schedule strong-positive alias expansion
+창신동 문구완구거리,창신동 문구완구거리,종로구,골목상권,gold_schedule_manual_20260525,new schedule strong-positive alias expansion
+수유역,수유역,강북구,교통거점,gold_schedule_manual_20260525,new schedule strong-positive alias expansion
+삼양사거리,삼양사거리,강북구,교통거점,gold_schedule_manual_20260525,new schedule strong-positive alias expansion
+인왕시장,인왕시장,서대문구,전통시장,gold_schedule_manual_20260525,new schedule strong-positive alias expansion
+국민은행 홍제동점,국민은행 홍제동점,서대문구,교통거점,gold_schedule_manual_20260525,new schedule strong-positive alias expansion
+우리시장,우리시장,영등포구,전통시장,gold_schedule_manual_20260525,new schedule strong-positive alias expansion
+베다니교회 앞,베다니교회 앞,구로구,교통거점,gold_schedule_manual_20260525,new schedule strong-positive alias expansion
+성신여대입구,성신여대입구,성북구,교통거점,gold_schedule_manual_20260525,new schedule strong-positive alias expansion
+경동시장,경동시장,동대문구,전통시장,gold_schedule_manual_20260525,new schedule strong-positive alias expansion
+청량리역사거리,청량리역사거리,동대문구,교통거점,gold_schedule_manual_20260525,new schedule strong-positive alias expansion
+강남역,강남역,강남구,교통거점,gold_schedule_manual_20260525,new schedule strong-positive alias expansion
+보라매공원,보라매공원,동작구,공원,gold_schedule_manual_20260525,new schedule strong-positive alias expansion
+능동어린이대공원,능동어린이대공원,광진구,공원,gold_schedule_manual_20260525,new schedule strong-positive alias expansion
+건대입구 롯데백화점 앞,건대입구 롯데백화점 앞,광진구,교통거점,gold_schedule_manual_20260525,new schedule strong-positive alias expansion
+뚝도시장,뚝도시장,성동구,전통시장,gold_schedule_manual_20260525,new schedule strong-positive alias expansion
+성수역 사거리,성수역 사거리,성동구,교통거점,gold_schedule_manual_20260525,new schedule strong-positive alias expansion
+성수역 일대,성수역 일대,성동구,교통거점,gold_schedule_manual_20260525,new schedule strong-positive alias expansion
+용문전통시장,용문전통시장,용산구,전통시장,gold_schedule_manual_20260525,new schedule strong-positive alias expansion
+남성시장,남성시장,동작구,전통시장,gold_schedule_manual_20260525,new schedule strong-positive alias expansion
+이수역 14번 출구,이수역 14번 출구,동작구,교통거점,gold_schedule_manual_20260525,new schedule strong-positive alias expansion
+영등포 지하상가,영등포 지하상가,영등포구,골목상권,gold_schedule_manual_20260525,new schedule strong-positive alias expansion
+홍대상상마당,홍대상상마당,마포구,교통거점,gold_schedule_manual_20260525,new schedule strong-positive alias expansion
+돈화문 사거리,돈화문 사거리,중구,교통거점,gold_schedule_manual_20260525,new schedule strong-positive alias expansion
+잠수교,잠수교,서초구,공원,gold_schedule_manual_20260525,new schedule strong-positive alias expansion
+서울농산관,서울농산관,관악구,교통거점,gold_schedule_manual_20260525,new schedule strong-positive alias expansion
+도봉산 입구,도봉산 입구,도봉구,공원,gold_schedule_manual_20260525,new schedule strong-positive alias expansion
+방학역,방학역,도봉구,교통거점,gold_schedule_manual_20260525,new schedule strong-positive alias expansion
+경춘선 숲길,경춘선 숲길,노원구,공원,gold_schedule_manual_20260525,new schedule strong-positive alias expansion
+백학시장,백학시장,중구,전통시장,gold_schedule_manual_20260525,new schedule strong-positive alias expansion
+신당역,신당역,중구,교통거점,gold_schedule_manual_20260525,new schedule strong-positive alias expansion
+어린이대공원,어린이대공원,광진구,공원,gold_schedule_manual_20260525,new schedule strong-positive alias expansion
+수서역 만남의 광장,수서역 만남의 광장,강남구,교통거점,gold_schedule_manual_20260525,new schedule strong-positive alias expansion
+개포동 시장,개포동 시장,강남구,전통시장,gold_schedule_manual_20260525,new schedule strong-positive alias expansion
+성수동 골목상권,성수동 골목상권,성동구,골목상권,gold_schedule_manual_20260525,new schedule strong-positive alias expansion
+황학시장 입구,황학시장 입구,중구,전통시장,gold_schedule_manual_20260525,new schedule strong-positive alias expansion
+영등포전통시장 남문,영등포전통시장 남문,영등포구,전통시장,gold_schedule_manual_20260525,new schedule strong-positive alias expansion
+방신전통시장,방신전통시장,강서구,전통시장,gold_schedule_manual_20260525,new schedule strong-positive alias expansion
+남부골목시장,남부골목시장,강서구,골목상권,gold_schedule_manual_20260525,new schedule strong-positive alias expansion
+상계중앙시장,상계중앙시장,노원구,전통시장,gold_schedule_manual_20260525,new schedule strong-positive alias expansion
+남구로시장,남구로시장,구로구,전통시장,gold_schedule_manual_20260525,new schedule strong-positive alias expansion
+"망원시장, 월드컵시장","망원시장, 월드컵시장",마포구,전통시장,gold_schedule_manual_20260525,new schedule strong-positive alias expansion
+세종대로 사거리 광화문 광장,세종대로 사거리 광화문 광장,종로구,교통거점,gold_schedule_manual_20260525,new schedule strong-positive alias expansion
+세종마을 음식문화거리,세종마을 음식문화거리,종로구,골목상권,gold_schedule_manual_20260525,new schedule strong-positive alias expansion
+중곡제일골목시장,중곡제일골목시장,광진구,골목상권,gold_schedule_manual_20260525,new schedule strong-positive alias expansion
+신원시장,신원시장,관악구,전통시장,gold_schedule_manual_20260525,new schedule strong-positive alias expansion
+노량진수산시장,노량진수산시장,동작구,전통시장,gold_schedule_manual_20260525,new schedule strong-positive alias expansion
+양재천 수변무대 일대,양재천 수변무대 일대,양천구,공원,gold_schedule_manual_20260525,new schedule strong-positive alias expansion
+수유시장,수유시장,강북구,전통시장,gold_schedule_manual_20260525,new schedule strong-positive alias expansion
+남성사계시장,남성사계시장,동작구,전통시장,gold_schedule_manual_20260525,new schedule strong-positive alias expansion
+성대전통시장,성대전통시장,동작구,전통시장,gold_schedule_manual_20260525,new schedule strong-positive alias expansion
+영천시장,영천시장,서대문구,전통시장,gold_schedule_manual_20260525,new schedule strong-positive alias expansion
+금남시장,금남시장,성동구,전통시장,gold_schedule_manual_20260525,new schedule strong-positive alias expansion
+남대문시장,남대문시장,중구,전통시장,gold_schedule_manual_20260525,new schedule strong-positive alias expansion
+금천 현대시장,금천 현대시장,금천구,전통시장,gold_schedule_manual_20260525,new schedule strong-positive alias expansion
+여의도공원 10번 출구,여의도공원 10번 출구,마포구,노동현장,gold_schedule_manual_20260525,new schedule strong-positive alias expansion
+마포구 월드컵로 251,마포구 월드컵로 251,마포구,체육시설,gold_schedule_manual_20260525,new schedule strong-positive alias expansion
+서울어린이대공원,서울어린이대공원,광진구,어린이/가족시설,gold_schedule_manual_20260525,new schedule strong-positive alias expansion
+새마을전통시장,새마을전통시장,송파구,전통시장,gold_schedule_manual_20260525,new schedule strong-positive alias expansion
+여의도공원 3동 무궁화화장실 앞,여의도공원 3동 무궁화화장실 앞,영등포구,노동현장,gold_schedule_manual_20260525,new schedule strong-positive alias expansion
+투썸플레이스 정동길점,투썸플레이스 정동길점,중구,골목상권,gold_schedule_manual_20260525,new schedule strong-positive alias expansion
+먹골역 7번출구 앞,먹골역 7번출구 앞,중랑구,공원,gold_schedule_manual_20260525,new schedule strong-positive alias expansion
+성수역 3번출구 앞,성수역 3번출구 앞,성동구,골목상권,gold_schedule_manual_20260525,new schedule strong-positive alias expansion
+GTX-A 삼성역 부실공사 현장,GTX-A 삼성역 부실공사 현장,강남구,정책현장,gold_schedule_manual_20260525,new schedule strong-positive alias expansion
+청년서울살이 현장,청년서울살이 현장,종로구,정책현장,gold_schedule_manual_20260525,new schedule strong-positive alias expansion
+대학로 마로니에공원,대학로 마로니에공원,종로구,공원,gold_schedule_manual_20260525,new schedule strong-positive alias expansion
+목동 재건축 현장,목동 재건축 현장,양천구,재개발/도시개발현장,gold_schedule_manual_20260525,new schedule strong-positive alias expansion
+동서울우편집중국,동서울우편집중국,광진구,노동현장,gold_schedule_manual_20260525,new schedule strong-positive alias expansion
+청년안심주택,청년안심주택,광진구,정책현장,gold_schedule_manual_20260525,new schedule strong-positive alias expansion
+고속터미널,고속터미널,서초구,교통거점,gold_schedule_manual_20260525,new schedule strong-positive alias expansion
+강남스퀘어,강남스퀘어,강남구,교통거점,gold_schedule_manual_20260525,new schedule strong-positive alias expansion
+면목역 광장,면목역 광장,중랑구,교통거점,gold_schedule_manual_20260525,new schedule strong-positive alias expansion
+동일시장,동일시장,중랑구,전통시장,gold_schedule_manual_20260525,new schedule strong-positive alias expansion
+롯데백화점 앞,롯데백화점 앞,노원구,교통거점,gold_schedule_manual_20260525,new schedule strong-positive alias expansion
+상계보람아파트,상계보람아파트,노원구,재개발/도시개발현장,gold_schedule_manual_20260525,new schedule strong-positive alias expansion
+박영선 지역유세장,박영선 지역유세장,도봉구,교통거점,gold_schedule_manual_20260525,new schedule strong-positive alias expansion
+중앙시장,중앙시장,도봉구,전통시장,gold_schedule_manual_20260525,new schedule strong-positive alias expansion
+용산역,용산역,용산구,교통거점,gold_schedule_manual_20260525,new schedule strong-positive alias expansion
+도봉산 입구,도봉산 입구,도봉구,교통거점,gold_schedule_manual_20260525,new schedule strong-positive alias expansion
+도봉산길,도봉산길,도봉구,공원,gold_schedule_manual_20260525,new schedule strong-positive alias expansion
+연신내역,연신내역,은평구,교통거점,gold_schedule_manual_20260525,new schedule strong-positive alias expansion
+홍제역,홍제역,서대문구,교통거점,gold_schedule_manual_20260525,new schedule strong-positive alias expansion
+상암,상암,마포구,교통거점,gold_schedule_manual_20260525,new schedule strong-positive alias expansion
+홍대거리,홍대거리,마포구,골목상권,gold_schedule_manual_20260525,new schedule strong-positive alias expansion
+재개발·재건축 현장,재개발·재건축 현장,광진구,재개발/도시개발현장,gold_schedule_manual_20260525,new schedule strong-positive alias expansion
+천호공원,천호공원,강동구,공원,gold_schedule_manual_20260525,new schedule strong-positive alias expansion
+재개발·재건축 현장,재개발·재건축 현장,강동구,재개발/도시개발현장,gold_schedule_manual_20260525,new schedule strong-positive alias expansion
+재개발·재건축 현장,재개발·재건축 현장,송파구,재개발/도시개발현장,gold_schedule_manual_20260525,new schedule strong-positive alias expansion
+성내전통시장,성내전통시장,강동구,전통시장,gold_schedule_manual_20260525,new schedule strong-positive alias expansion
+마곡나루역,마곡나루역,강서구,교통거점,gold_schedule_manual_20260525,new schedule strong-positive alias expansion
+서울식물원,서울식물원,강서구,공원,gold_schedule_manual_20260525,new schedule strong-positive alias expansion
+현대백화점 목동점,현대백화점 목동점,양천구,교통거점,gold_schedule_manual_20260525,new schedule strong-positive alias expansion
+시티렉스 앞,시티렉스 앞,금천구,교통거점,gold_schedule_manual_20260525,new schedule strong-positive alias expansion
+영등포 재개발·재건축 현장,영등포 재개발·재건축 현장,영등포구,재개발/도시개발현장,gold_schedule_manual_20260525,new schedule strong-positive alias expansion
+타임스퀘어,타임스퀘어,영등포구,교통거점,gold_schedule_manual_20260525,new schedule strong-positive alias expansion

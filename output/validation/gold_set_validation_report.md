@@ -1,0 +1,37 @@
+# Gold Set 데이터 무결성 검증 보고서
+
+- 최종 Gold Set row 수: 391
+- 후보자별 row 수: {'정원오': 244, '오세훈': 147}
+- strong positive query 수: 169
+- 후보자별 query 수: {'정원오': 107, '오세훈': 62}
+- CRITICAL 실패: 0
+- WARNING 실패: 0
+
+## 주요 검증 결과
+
+| check_name | severity | passed | actual | expected | detail |
+| --- | --- | --- | --- | --- | --- |
+| final_gold_row_count | CRITICAL | True | 391 | 391 |  |
+| new_gold_row_count | CRITICAL | True | 205 | 205 |  |
+| candidate_name_domain | CRITICAL | True | 오세훈;정원오 | 정원오;오세훈 |  |
+| gold_id_duplicate_count | CRITICAL | True | 0 | 0 |  |
+| required_gold_columns | CRITICAL | True |  | none |  |
+| date_format_yyyy_mm_dd | CRITICAL | True | 0 | 0 |  |
+| gold_label_domain | CRITICAL | True | 0 | 0 |  |
+| online_offline_domain | CRITICAL | True | 0 | 0 |  |
+| use_for_place_recommendation_bool_parseable | CRITICAL | True | 0 | 0 |  |
+| source_image_empty_count | CRITICAL | True | 0 | 0 |  |
+| strong_place_name_empty_count | CRITICAL | True | 0 | 0 |  |
+| strong_district_empty_count | CRITICAL | True | 0 | 0 |  |
+| recomputed_strong_query_count | CRITICAL | True | 169 | 169 |  |
+| query_count_jungwono | CRITICAL | True | 107 | 107 |  |
+| query_count_ohsehoon | CRITICAL | True | 62 | 62 |  |
+| evaluation_query_count_all | CRITICAL | True | 169 | 169 |  |
+| evaluation_query_count_jungwono_file | CRITICAL | True | 107 | 107 |  |
+| evaluation_query_count_ohsehoon_file | CRITICAL | True | 62 | 62 |  |
+| query_id_duplicate_count | CRITICAL | True | 0 | 0 |  |
+| existing_jungwono_rows_preserved | CRITICAL | True | 0 | 0 |  |
+| existing_jungwono_normalized_metadata_differences | INFO | True | 4 | documented | Stable row keys are preserved; strict metadata differences are expected from district/time normalization. |
+| ohsehoon_20260523_missing_logged | WARNING | True | log=True;report=True | log=True;report=True |  |
+| alias_table_rows | INFO | True | 184 | >=184 |  |
+| new_rows_review_required | WARNING | True | 205 | 205 | Manual transcription/address review remains required |

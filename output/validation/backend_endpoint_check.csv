@@ -1,0 +1,6 @@
+﻿endpoint,status_code,success,error_message,response_key_summary
+GET /health,200,True,,status
+POST /recommend,200,True,,input;places;messages
+GET /route/sample,200,True,,summary;timeline;insights;map
+GET /evaluation/dashboard,200,True,,source_files;model_comparison;optimized_metrics;best_weights;gold_summary;split_summaries;feature_contribution
+GET /coverage/dashboard,200,True,,source_files;summary;diagnosis;missing_by_place_type;missing_by_district;missing_by_campaign_activity_type

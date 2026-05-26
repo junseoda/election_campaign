@@ -456,6 +456,11 @@ function buildStaticRouteFillers(request, selectedDistricts, count, existingItem
   });
 }
 
+function countStaticRouteCandidatePool(selectedDistricts) {
+  const selected = normalizeDistricts(selectedDistricts);
+  return selected.reduce((sum, district) => sum + (STATIC_DISTRICT_ROUTE_CANDIDATES[district]?.length || 0), 0);
+}
+
 function buildStaticRecommendationFillers(query, selectedDistricts, count, existingItems = []) {
   const selected = normalizeDistricts(selectedDistricts);
   if (!selected.length || count <= 0) {
@@ -532,7 +537,7 @@ function ensureDistrictSafeRoutePayload(payload = {}, request = {}) {
     timeline,
     debug: buildDistrictDebug(
       selected,
-      sourceTimeline.length,
+      sourceTimeline.length + countStaticRouteCandidatePool(selected),
       timeline.length,
       timeline,
       warnings
@@ -709,8 +714,8 @@ async function getRouteFallback(path, body) {
       timeline,
       debug: buildDistrictDebug(
         requestedDistricts,
-        sourceTimeline.length,
-        districtFilteredTimeline.length,
+        sourceTimeline.length + countStaticRouteCandidatePool(requestedDistricts),
+        timeline.length,
         timeline,
         warnings
       ),

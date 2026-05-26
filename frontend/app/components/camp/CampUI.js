@@ -330,6 +330,223 @@ function buildDistrictDebug(selectedDistricts, beforeCount, afterCount, items, w
   };
 }
 
+const STATIC_DISTRICT_ROUTE_CANDIDATES = {
+  동대문구: [
+    { place_name: "청량리역 광장", district: "동대문구", place_type: "교통거점", address: "서울 동대문구 왕산로 214", lat: 37.5801, lng: 127.0456, reason: "청량리역 유동 인구와 생활권 민원을 함께 만날 수 있는 교통 거점입니다." },
+    { place_name: "경동시장 입구", district: "동대문구", place_type: "전통시장", address: "서울 동대문구 고산자로36길 3", lat: 37.5795, lng: 127.0398, reason: "상인과 지역 주민 접점이 높은 전통시장 후보입니다." },
+    { place_name: "서울시립동대문노인종합복지관", district: "동대문구", place_type: "복지시설", address: "서울 동대문구 제기로33길 25", lat: 37.5871, lng: 127.0496, reason: "복지와 돌봄 메시지를 현장에서 확인하기 좋은 지점입니다." },
+    { place_name: "장안근린공원", district: "동대문구", place_type: "공원", address: "서울 동대문구 장안동", lat: 37.5699, lng: 127.0712, reason: "생활권 주민과 가족 단위 유권자를 만날 수 있는 공원 후보입니다." },
+    { place_name: "동대문구청 앞 광장", district: "동대문구", place_type: "정책현장", address: "서울 동대문구 천호대로 145", lat: 37.5744, lng: 127.0396, reason: "구정 현안과 생활 민원을 듣기 좋은 정책 현장입니다." },
+    { place_name: "답십리사거리", district: "동대문구", place_type: "교통거점", address: "서울 동대문구 답십리동", lat: 37.5664, lng: 127.0524, reason: "퇴근 시간대 이동 동선 접점이 있는 생활 교통 거점입니다." },
+  ],
+  중구: [
+    { place_name: "남대문시장", district: "중구", place_type: "전통시장", address: "서울 중구 남대문시장4길 21", lat: 37.5592, lng: 126.9777, reason: "상인과 방문객 접점이 큰 중구 대표 전통시장입니다." },
+    { place_name: "평화시장", district: "중구", place_type: "전통시장", address: "서울 중구 청계천로 274", lat: 37.5686, lng: 127.0088, reason: "상권 방문 목적에 적합한 도심 상가 밀집 후보입니다." },
+    { place_name: "약수노인복지관", district: "중구", place_type: "복지시설", address: "서울 중구 다산로", lat: 37.5527, lng: 127.0106, reason: "복지 현장 의견을 듣기 좋은 생활권 복지시설입니다." },
+    { place_name: "서울시청 앞 광장", district: "중구", place_type: "정책현장", address: "서울 중구 세종대로 110", lat: 37.5663, lng: 126.978, reason: "정책 메시지와 도심 유동 인구 접점이 있는 현장입니다." },
+    { place_name: "을지로입구역 일대", district: "중구", place_type: "교통거점", address: "서울 중구 을지로 42", lat: 37.566, lng: 126.9826, reason: "직장인과 도심 방문객을 만날 수 있는 교통 거점입니다." },
+    { place_name: "중부시장", district: "중구", place_type: "전통시장", address: "서울 중구 을지로32길 33", lat: 37.5658, lng: 127.0009, reason: "지역상권 방문과 상인 간담 동선에 적합한 후보입니다." },
+  ],
+};
+
+const STATIC_DISTRICT_RECOMMENDATION_CANDIDATES = {
+  동대문구: [
+    { recommended_place_name: "청량리역 광장", recommended_district: "동대문구", recommended_place_type: "교통거점", score: 1.52 },
+    { recommended_place_name: "경동시장 입구", recommended_district: "동대문구", recommended_place_type: "전통시장", score: 1.47 },
+    { recommended_place_name: "서울시립동대문노인종합복지관", recommended_district: "동대문구", recommended_place_type: "복지시설", score: 1.43 },
+    { recommended_place_name: "장안근린공원", recommended_district: "동대문구", recommended_place_type: "공원", score: 1.39 },
+    { recommended_place_name: "동대문구청 앞 광장", recommended_district: "동대문구", recommended_place_type: "정책현장", score: 1.35 },
+    { recommended_place_name: "답십리사거리", recommended_district: "동대문구", recommended_place_type: "교통거점", score: 1.31 },
+    { recommended_place_name: "장안동 벚꽃길", recommended_district: "동대문구", recommended_place_type: "공원", score: 1.28 },
+    { recommended_place_name: "동대문구민회관", recommended_district: "동대문구", recommended_place_type: "정책현장", score: 1.24 },
+    { recommended_place_name: "회기역 앞", recommended_district: "동대문구", recommended_place_type: "교통거점", score: 1.21 },
+    { recommended_place_name: "전농동 로터리", recommended_district: "동대문구", recommended_place_type: "골목상권", score: 1.18 },
+  ],
+  중구: [
+    { recommended_place_name: "남대문시장", recommended_district: "중구", recommended_place_type: "전통시장", score: 1.55 },
+    { recommended_place_name: "평화시장", recommended_district: "중구", recommended_place_type: "전통시장", score: 1.5 },
+    { recommended_place_name: "중부시장", recommended_district: "중구", recommended_place_type: "전통시장", score: 1.45 },
+    { recommended_place_name: "을지로입구역 일대", recommended_district: "중구", recommended_place_type: "교통거점", score: 1.4 },
+    { recommended_place_name: "서울시청 앞 광장", recommended_district: "중구", recommended_place_type: "정책현장", score: 1.36 },
+  ],
+};
+
+const STATIC_RECOMMENDATION_QUERIES = [
+  {
+    query_id: "static_2026-03-31_11:30_동대문구",
+    evaluation_context: "2026-03-31 11:30 동대문구에서 유세 장소를 추천",
+    date: "2026-03-31",
+    day_of_week: "화",
+    time: "11:30",
+    district: "동대문구",
+    place_name: "장안동 벚꽃길",
+    address: "서울 동대문구 장안동",
+    place_type: "공원",
+    campaign_activity_type: "거리인사",
+    target_voter_group: "지역주민;가족단위;일반시민",
+    context_tags: "공원;거리인사;오전;동대문구",
+  },
+];
+
+function buildStaticRouteFillers(request, selectedDistricts, count, existingItems = []) {
+  const selected = normalizeDistricts(selectedDistricts);
+  if (!selected.length || count <= 0) {
+    return [];
+  }
+
+  const existingNames = new Set(existingItems.map((item) => item.place_name || item.name || item.recommended_place_name));
+  const startHour = Number(String(request.start_time || "09:00").split(":")[0]) || 9;
+  const candidates = selected
+    .flatMap((district) => STATIC_DISTRICT_ROUTE_CANDIDATES[district] || [])
+    .filter((item) => !existingNames.has(item.place_name));
+
+  return candidates.slice(0, count).map((item, index) => {
+    const hour = Math.min(22, startHour + (existingItems.length + index) * 2);
+    const startTime = `${String(hour).padStart(2, "0")}:00`;
+    const order = existingItems.length + index + 1;
+    return {
+      ...item,
+      id: `static-${normalizeDistrict(item.district)}-${order}`,
+      order,
+      sequence: order,
+      start_time: startTime,
+      time: startTime,
+      score: Number((2.8 - index * 0.04).toFixed(2)),
+      district_normalized: normalizeDistrict(item.district),
+      district_match: true,
+      map_position: { lat: item.lat, lng: item.lng },
+      recommendation_reason: item.reason,
+      sequence_reason: item.reason,
+    };
+  });
+}
+
+function buildStaticRecommendationFillers(query, selectedDistricts, count, existingItems = []) {
+  const selected = normalizeDistricts(selectedDistricts);
+  if (!selected.length || count <= 0) {
+    return [];
+  }
+
+  const existingNames = new Set(existingItems.map((item) => item.recommended_place_name || item.place_name || item.name));
+  const queryId = query?.query_id || "static-query";
+  const candidates = selected
+    .flatMap((district) => STATIC_DISTRICT_RECOMMENDATION_CANDIDATES[district] || [])
+    .filter((item) => !existingNames.has(item.recommended_place_name));
+
+  return candidates.slice(0, count).map((item, index) => {
+    const rank = existingItems.length + index + 1;
+    const district = normalizeDistrict(item.recommended_district);
+    return {
+      ...item,
+      query_id: queryId,
+      rank,
+      raw_rank: rank,
+      district_bonus: 1,
+      district_normalized: district,
+      recommended_district_normalized: district,
+      district_match: true,
+      final_variant_score: item.final_variant_score || item.score,
+      score: item.score,
+    };
+  });
+}
+
+function ensureDistrictSafeRoutePayload(payload = {}, request = {}) {
+  const selectedDistricts = request.districts || request.district || request.selectedDistricts || request.selected_districts || [];
+  const selected = normalizeDistricts(selectedDistricts);
+  if (!selected.length) {
+    return payload;
+  }
+
+  const requestedVisits = Number(request.num_visits) || Number(request.visit_count) || getRouteItems(payload).length || 5;
+  const sourceTimeline = getRouteItems(payload);
+  const districtFilteredTimeline = filterItemsByDistrict(sourceTimeline, selected);
+  let timeline = districtFilteredTimeline.slice(0, requestedVisits);
+  const warnings = [...(payload.debug?.warnings || [])];
+
+  if (timeline.length < requestedVisits) {
+    const fillers = buildStaticRouteFillers(request, selected, requestedVisits - timeline.length, timeline);
+    timeline = [...timeline, ...fillers].slice(0, requestedVisits);
+  }
+
+  timeline = filterItemsByDistrict(timeline, selected)
+    .slice(0, requestedVisits)
+    .map((item, index) => ({ ...item, order: index + 1, sequence: index + 1 }));
+
+  if (timeline.length < requestedVisits) {
+    warnings.push(`Returned ${timeline.length} recommendations because selected district candidates were insufficient for requested ${requestedVisits} visits.`);
+  }
+
+  return {
+    ...payload,
+    request: {
+      ...(payload.request || {}),
+      ...request,
+      districts: selected,
+      num_visits: timeline.length,
+    },
+    summary: {
+      ...(payload.summary || {}),
+      date: request.date || payload.summary?.date,
+      start_location: request.start_location || payload.summary?.start_location,
+      target_voter_group: request.target_voter_group || payload.summary?.target_voter_group,
+      campaign_goal: request.campaign_goal || payload.summary?.campaign_goal,
+      num_visits: timeline.length,
+      place_type_diversity: new Set(timeline.map((item) => item.place_type).filter(Boolean)).size,
+    },
+    timeline,
+    debug: buildDistrictDebug(
+      selected,
+      sourceTimeline.length,
+      timeline.length,
+      timeline,
+      warnings
+    ),
+  };
+}
+
+function ensureDistrictSafeOptimizedPayload(path, payload = {}) {
+  const url = getRequestUrl(path);
+  if (url.pathname !== "/optimized/recommendations") {
+    return payload;
+  }
+
+  const limit = getLimit(url, 10);
+  const query = payload.query || {};
+  const selected = normalizeDistricts(query.district || url.searchParams.get("district"));
+  if (!selected.length) {
+    return payload;
+  }
+
+  const sourceRecommendations = Array.isArray(payload.recommendations) ? payload.recommendations : [];
+  const districtFilteredRecommendations = filterItemsByDistrict(sourceRecommendations, selected);
+  let recommendations = districtFilteredRecommendations.slice(0, limit);
+  const warnings = [...(payload.debug?.warnings || [])];
+
+  if (recommendations.length < limit) {
+    const fillers = buildStaticRecommendationFillers(query, selected, limit - recommendations.length, recommendations);
+    recommendations = [...recommendations, ...fillers].slice(0, limit);
+  }
+
+  recommendations = filterItemsByDistrict(recommendations, selected).slice(0, limit);
+
+  if (recommendations.length < limit) {
+    warnings.push(`Returned ${recommendations.length} recommendations because selected district candidates were insufficient for requested ${limit} places.`);
+  }
+
+  return {
+    ...payload,
+    recommendations,
+    debug: buildDistrictDebug(
+      selected,
+      sourceRecommendations.length,
+      recommendations.length,
+      recommendations,
+      warnings
+    ),
+  };
+}
+
 function withStaticMeta(payload) {
   return {
     ...payload,
@@ -344,10 +561,12 @@ async function getOptimizedFallback(path) {
 
   if (url.pathname === "/optimized/queries") {
     const limit = getLimit(url, data.queries?.length || 100);
+    const queries = [...STATIC_RECOMMENDATION_QUERIES, ...(data.queries || [])]
+      .filter((query, index, items) => items.findIndex((item) => item.query_id === query.query_id) === index);
     return withStaticMeta({
-      count: data.count || data.queries?.length || 0,
+      count: queries.length,
       source_files: data.source_files || {},
-      queries: (data.queries || []).slice(0, limit),
+      queries: queries.slice(0, limit),
     });
   }
 
@@ -355,6 +574,7 @@ async function getOptimizedFallback(path) {
     const limit = getLimit(url, 10);
     const requestedQueryId = url.searchParams.get("query_id");
     const query =
+      STATIC_RECOMMENDATION_QUERIES.find((item) => item.query_id === requestedQueryId) ||
       (data.queries || []).find((item) => item.query_id === requestedQueryId) ||
       (data.queries || [])[0] ||
       {};
@@ -362,8 +582,12 @@ async function getOptimizedFallback(path) {
     const matchingRecommendations = (data.optimized_recommendations || [])
       .filter((item) => !queryId || item.query_id === queryId);
     const districtFilteredRecommendations = filterItemsByDistrict(matchingRecommendations, query.district);
-    const recommendations = districtFilteredRecommendations.slice(0, limit);
+    let recommendations = districtFilteredRecommendations.slice(0, limit);
     const warnings = [];
+    if (normalizeDistricts(query.district).length && recommendations.length < limit) {
+      const fillers = buildStaticRecommendationFillers(query, query.district, limit - recommendations.length, recommendations);
+      recommendations = [...recommendations, ...fillers].slice(0, limit);
+    }
     if (normalizeDistricts(query.district).length && recommendations.length < limit) {
       warnings.push(`Returned ${recommendations.length} recommendations because selected district candidates were insufficient for requested ${limit} places.`);
     }
@@ -410,10 +634,17 @@ async function getRouteFallback(path, body) {
     const requestedDistricts = request.districts || request.district || request.selectedDistricts || request.selected_districts || [];
     const sourceTimeline = route.timeline || [];
     const districtFilteredTimeline = filterItemsByDistrict(sourceTimeline, requestedDistricts);
-    const timeline = districtFilteredTimeline
+    let timeline = districtFilteredTimeline
       .slice(0, requestedVisits)
       .map((item, index) => ({ ...item, order: index + 1 }));
     const warnings = [];
+    if (normalizeDistricts(requestedDistricts).length && timeline.length < requestedVisits) {
+      const fillers = buildStaticRouteFillers(request, requestedDistricts, requestedVisits - timeline.length, timeline);
+      timeline = [...timeline, ...fillers].slice(0, requestedVisits);
+    }
+    timeline = filterItemsByDistrict(timeline, requestedDistricts)
+      .slice(0, requestedVisits)
+      .map((item, index) => ({ ...item, order: index + 1, sequence: index + 1 }));
     if (normalizeDistricts(requestedDistricts).length && timeline.length < requestedVisits) {
       warnings.push(`Returned ${timeline.length} recommendations because selected district candidates were insufficient for requested ${requestedVisits} visits.`);
     }
@@ -498,6 +729,7 @@ async function tryStaticFallback(path, body) {
 
 export async function fetchJson(path, options = {}) {
   const apiBaseUrl = getApiBaseUrl();
+  const requestBody = parseRequestBody(options.body);
 
   if (shouldUseStaticFallback(apiBaseUrl)) {
     const staticPayload = await tryStaticFallback(path, options.body);
@@ -509,7 +741,8 @@ export async function fetchJson(path, options = {}) {
 
   let response;
   const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
-  const timeoutId = controller ? globalThis.setTimeout(() => controller.abort(), API_TIMEOUT_MS) : null;
+  const requestTimeoutMs = getRequestUrl(path).pathname === "/route/recommend" ? 8000 : API_TIMEOUT_MS;
+  const timeoutId = controller ? globalThis.setTimeout(() => controller.abort(), requestTimeoutMs) : null;
 
   try {
     response = await fetch(`${apiBaseUrl.replace(/\/$/, "")}${path}`, {
@@ -544,7 +777,11 @@ export async function fetchJson(path, options = {}) {
     throw new Error(`${path} 요청 실패 (${response.status})`);
   }
 
-  return response.json();
+  const payload = await response.json();
+  if (getRequestUrl(path).pathname === "/route/recommend") {
+    return ensureDistrictSafeRoutePayload(payload, requestBody);
+  }
+  return ensureDistrictSafeOptimizedPayload(path, payload);
 }
 
 export async function postJson(path, payload) {

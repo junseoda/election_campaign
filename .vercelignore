@@ -2,6 +2,12 @@
 .edge-cdp-profile*
 backend
 data
+!frontend/public/
+!frontend/public/data/
+!frontend/public/data/**
+!public/
+!public/data/
+!public/data/**
 docs
 gold set수작업
 output

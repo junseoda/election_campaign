@@ -388,6 +388,41 @@ const STATIC_RECOMMENDATION_QUERIES = [
   },
 ];
 
+const STATIC_ROUTE_OPTIONS = {
+  districts: SEOUL_DISTRICTS,
+  target_voter_groups: ["직장인", "청년", "상인", "노년층", "가족/어린이", "지역주민"],
+  campaign_goals: ["출근인사", "시장방문", "정책현장", "공원방문", "퇴근인사", "지역상권방문"],
+  place_types: ["교통거점", "골목상권", "전통시장", "공원", "복지시설", "정책현장", "체육시설"],
+  default_request: {
+    date: "2026-05-20",
+    start_time: "09:00",
+    end_time: "18:00",
+    start_location: "성동구청",
+    districts: ["중구"],
+    target_voter_group: "직장인",
+    campaign_goal: "퇴근인사",
+    preferred_place_types: ["교통거점", "골목상권", "전통시장"],
+    num_visits: 5,
+    avoid_duplicates: true,
+  },
+};
+
+function buildStaticRouteShell(request = {}) {
+  return {
+    request,
+    summary: {
+      date: request.date,
+      start_location: request.start_location,
+      target_voter_group: request.target_voter_group,
+      campaign_goal: request.campaign_goal,
+      num_visits: 0,
+      model: "static_demo_route",
+    },
+    timeline: [],
+    insights: ["현재 정적 데모 모드로 실행 중입니다."],
+  };
+}
+
 function buildStaticRouteFillers(request, selectedDistricts, count, existingItems = []) {
   const selected = normalizeDistricts(selectedDistricts);
   if (!selected.length || count <= 0) {
@@ -617,19 +652,25 @@ async function getOptimizedFallback(path) {
 
 async function getRouteFallback(path, body) {
   const url = getRequestUrl(path);
-  const data = await loadStaticData("map_routes.json");
+  let data = {};
+  try {
+    data = await loadStaticData("map_routes.json");
+  } catch (error) {
+    data = {};
+  }
 
   if (url.pathname === "/route/options") {
-    return withStaticMeta(cloneStaticPayload(data.route_options || {}));
+    return withStaticMeta(cloneStaticPayload(data.route_options || STATIC_ROUTE_OPTIONS));
   }
 
   if (url.pathname === "/route/sample") {
-    return withStaticMeta(cloneStaticPayload(data.sample_route || {}));
+    const defaultRequest = data.route_options?.default_request || STATIC_ROUTE_OPTIONS.default_request;
+    return withStaticMeta(cloneStaticPayload(data.sample_route || buildStaticRouteShell(defaultRequest)));
   }
 
   if (url.pathname === "/route/recommend") {
     const request = parseRequestBody(body);
-    const route = cloneStaticPayload(data.sample_route || {});
+    const route = cloneStaticPayload(data.sample_route || buildStaticRouteShell(request));
     const requestedVisits = Number(request.num_visits) || route.timeline?.length || 5;
     const requestedDistricts = request.districts || request.district || request.selectedDistricts || request.selected_districts || [];
     const sourceTimeline = route.timeline || [];

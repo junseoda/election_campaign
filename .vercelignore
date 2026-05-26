@@ -1,0 +1,21 @@
+.git
+.edge-cdp-profile*
+backend
+data
+docs
+gold set수작업
+output
+scripts
+src
+*.log
+*.pdf
+*.docx
+*.hwp
+profiling_output.txt
+profiling_report.txt
+latest_run.txt
+backend-*.log
+edge-cdp*.log
+frontend/.next
+frontend/node_modules
+frontend/*.log

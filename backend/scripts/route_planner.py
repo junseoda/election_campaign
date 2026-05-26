@@ -10,9 +10,11 @@ import pandas as pd
 try:
     from scripts.message_rules import recommend_messages
     from scripts.recommender import recommend_places
+    from backend.district_utils import normalize_district
 except ImportError:
     from message_rules import recommend_messages
     from recommender import recommend_places
+    from district_utils import normalize_district
 
 
 DEFAULT_SLOTS = [
@@ -79,6 +81,10 @@ def normalize_name(value: str) -> str:
 
 
 def extract_district(value: str) -> str | None:
+    district = normalize_district(value)
+    if district:
+        return district
+
     text = normalize_name(value)
     if not text:
         return None
@@ -275,7 +281,11 @@ def get_route_messages(place_type: str, target_age_group: str) -> list[dict]:
     return MARKET_MESSAGE_FALLBACKS.get(target_age_group, messages)
 
 
-def build_greedy_route_from_slots(slots: list[dict], target_age_group: str) -> list[dict]:
+def build_greedy_route_from_slots(
+    slots: list[dict],
+    target_age_group: str,
+    selected_districts: object = None,
+) -> list[dict]:
     route = []
     used_place_names: set[str] = set()
     previous_place: dict | None = None
@@ -285,6 +295,7 @@ def build_greedy_route_from_slots(slots: list[dict], target_age_group: str) -> l
             slot["time_slot"],
             slot["place_type"],
             target_age_group,
+            selected_districts=selected_districts,
         )[:TOP_K_CANDIDATES]
         selected_place, previous_place = pick_place(
             places,
@@ -307,11 +318,12 @@ def build_greedy_route_from_slots(slots: list[dict], target_age_group: str) -> l
     return route
 
 
-def get_slot_candidates(slot: dict, target_age_group: str) -> list[dict | None]:
+def get_slot_candidates(slot: dict, target_age_group: str, selected_districts: object = None) -> list[dict | None]:
     places = recommend_places(
         slot["time_slot"],
         slot["place_type"],
         target_age_group,
+        selected_districts=selected_districts,
     )[:TOP_K_CANDIDATES]
 
     if not places:
@@ -379,8 +391,12 @@ def evaluate_route_candidate(route: list[dict], target_age_group: str) -> tuple[
     return route_score, route_reason, mean_place_score, average_interaction_score
 
 
-def build_best_route_from_slots(slots: list[dict], target_age_group: str) -> list[dict]:
-    candidate_pools = [get_slot_candidates(slot, target_age_group) for slot in slots]
+def build_best_route_from_slots(
+    slots: list[dict],
+    target_age_group: str,
+    selected_districts: object = None,
+) -> list[dict]:
+    candidate_pools = [get_slot_candidates(slot, target_age_group, selected_districts) for slot in slots]
 
     best_route = None
     best_rank = None
@@ -407,11 +423,11 @@ def build_best_route_from_slots(slots: list[dict], target_age_group: str) -> lis
     if best_route is not None:
         return best_route
 
-    return build_greedy_route_from_slots(slots, target_age_group)
+    return build_greedy_route_from_slots(slots, target_age_group, selected_districts)
 
 
-def build_route_from_slots(slots: list[dict], target_age_group: str) -> list[dict]:
-    return build_best_route_from_slots(slots, target_age_group)
+def build_route_from_slots(slots: list[dict], target_age_group: str, selected_districts: object = None) -> list[dict]:
+    return build_best_route_from_slots(slots, target_age_group, selected_districts)
 
 
 def clamp_score(value: float) -> float:
@@ -608,13 +624,14 @@ def build_campaign_route(
     target_age_group: str,
     route_template: str = "default",
     include_summary: bool = False,
+    selected_districts: object = None,
 ) -> list[dict] | dict:
     normalized_template = str(route_template).strip().lower()
 
     if normalized_template not in ROUTE_TEMPLATES:
         raise ValueError("route_template must be one of: default, neighborhood_focus")
 
-    route = build_route_from_slots(ROUTE_TEMPLATES[normalized_template], target_age_group)
+    route = build_route_from_slots(ROUTE_TEMPLATES[normalized_template], target_age_group, selected_districts)
 
     if not include_summary:
         return route
@@ -630,11 +647,13 @@ def build_campaign_route(
 def build_market_campaign_route(
     target_age_group: str,
     include_summary: bool = False,
+    selected_districts: object = None,
 ) -> list[dict] | dict:
     return build_campaign_route(
         target_age_group,
         route_template="neighborhood_focus",
         include_summary=include_summary,
+        selected_districts=selected_districts,
     )
 
 

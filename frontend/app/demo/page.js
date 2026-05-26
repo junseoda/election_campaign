@@ -127,6 +127,7 @@ export default function OptimizedDemoPage() {
       setIsLoadingRecommendations(true);
       setErrorMessage("");
       const payload = await fetchJson(`/optimized/recommendations?query_id=${encodeURIComponent(queryId)}&limit=10`);
+      console.log("[Recommend Response Debug]", payload.debug || payload);
       setRecommendationData(payload);
       setIsConditionDirty(false);
     } catch (error) {
@@ -156,6 +157,7 @@ export default function OptimizedDemoPage() {
 
   const handleQueryChange = useCallback((queryId) => {
     setSelectedQueryId(queryId);
+    setRecommendationData(null);
     setIsConditionDirty(true);
   }, []);
 

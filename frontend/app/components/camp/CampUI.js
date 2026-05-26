@@ -219,6 +219,117 @@ function parseRequestBody(body) {
   return {};
 }
 
+const SEOUL_DISTRICTS = [
+  "종로구", "중구", "용산구", "성동구", "광진구", "동대문구", "중랑구",
+  "성북구", "강북구", "도봉구", "노원구", "은평구", "서대문구", "마포구",
+  "양천구", "강서구", "구로구", "금천구", "영등포구", "동작구", "관악구",
+  "서초구", "강남구", "송파구", "강동구",
+];
+
+const DISTRICT_ALIAS = Object.fromEntries(
+  SEOUL_DISTRICTS.map((district) => [district.replace(/구$/, ""), district])
+);
+
+function normalizeDistrict(value) {
+  if (value === undefined || value === null) {
+    return "";
+  }
+
+  let text = String(value)
+    .trim()
+    .replaceAll("서울특별시", "")
+    .replaceAll("서울시", "")
+    .replaceAll("서울", "")
+    .trim();
+
+  if (!text) {
+    return "";
+  }
+
+  const parts = text.split(/\s+/);
+  for (const part of parts) {
+    if (SEOUL_DISTRICTS.includes(part)) {
+      return part;
+    }
+    if (DISTRICT_ALIAS[part]) {
+      return DISTRICT_ALIAS[part];
+    }
+    if (!part.endsWith("구") && SEOUL_DISTRICTS.includes(`${part}구`)) {
+      return `${part}구`;
+    }
+  }
+
+  if (SEOUL_DISTRICTS.includes(text)) {
+    return text;
+  }
+  if (DISTRICT_ALIAS[text]) {
+    return DISTRICT_ALIAS[text];
+  }
+  if (!text.endsWith("구") && SEOUL_DISTRICTS.includes(`${text}구`)) {
+    return `${text}구`;
+  }
+
+  const compact = text.replace(/\s+/g, "");
+  return SEOUL_DISTRICTS.find((district) => compact.includes(district)) || text;
+}
+
+function normalizeDistricts(value) {
+  const values = Array.isArray(value) ? value : value ? [value] : [];
+  return [...new Set(values.map(normalizeDistrict).filter(Boolean))];
+}
+
+function getCandidateDistrict(item = {}) {
+  return normalizeDistrict(
+    item.district_normalized ||
+      item.recommended_district_normalized ||
+      item.district ||
+      item.recommended_district ||
+      item.district_name ||
+      item["자치구"] ||
+      item["시군구"] ||
+      item.SIG_KOR_NM ||
+      item.gu ||
+      item.region
+  );
+}
+
+function filterItemsByDistrict(items = [], selectedDistricts) {
+  const selected = normalizeDistricts(selectedDistricts);
+  if (!selected.length) {
+    return items.map((item) => ({
+      ...item,
+      district_normalized: getCandidateDistrict(item),
+      district_match: true,
+    }));
+  }
+
+  return items
+    .map((item) => {
+      const district = getCandidateDistrict(item);
+      return {
+        ...item,
+        district_normalized: district,
+        district_match: selected.includes(district),
+      };
+    })
+    .filter((item) => item.district_match);
+}
+
+function buildDistrictDebug(selectedDistricts, beforeCount, afterCount, items, warnings = []) {
+  const selected = normalizeDistricts(selectedDistricts);
+  const mismatchCount = selected.length
+    ? items.filter((item) => !selected.includes(getCandidateDistrict(item))).length
+    : 0;
+  return {
+    selected_districts: selected,
+    candidate_count_before_district_filter: beforeCount,
+    candidate_count_after_district_filter: afterCount,
+    district_filter_applied: Boolean(selected.length),
+    district_mismatch_count: mismatchCount,
+    warnings,
+  };
+}
+
 function withStaticMeta(payload) {
   return {
     ...payload,
@@ -248,9 +359,14 @@ async function getOptimizedFallback(path) {
       (data.queries || [])[0] ||
       {};
     const queryId = query.query_id || requestedQueryId;
-    const recommendations = (data.optimized_recommendations || [])
-      .filter((item) => !queryId || item.query_id === queryId)
-      .slice(0, limit);
+    const matchingRecommendations = (data.optimized_recommendations || [])
+      .filter((item) => !queryId || item.query_id === queryId);
+    const districtFilteredRecommendations = filterItemsByDistrict(matchingRecommendations, query.district);
+    const recommendations = districtFilteredRecommendations.slice(0, limit);
+    const warnings = [];
+    if (normalizeDistricts(query.district).length && recommendations.length < limit) {
+      warnings.push(`Returned ${recommendations.length} recommendations because selected district candidates were insufficient for requested ${limit} places.`);
+    }
     const coverage = (data.coverage || []).filter((item) => !queryId || item.query_id === queryId).slice(0, 1);
     const hitAnalysis = (data.hit_analysis || []).filter((item) => !queryId || item.query_id === queryId).slice(0, 1);
 
@@ -260,6 +376,13 @@ async function getOptimizedFallback(path) {
       recommendations,
       coverage,
       hit_analysis: hitAnalysis,
+      debug: buildDistrictDebug(
+        query.district,
+        matchingRecommendations.length,
+        districtFilteredRecommendations.length,
+        recommendations,
+        warnings
+      ),
       best_weights: data.best_weights || {},
       source_files: data.source_files || {},
     });
@@ -284,9 +407,16 @@ async function getRouteFallback(path, body) {
     const request = parseRequestBody(body);
     const route = cloneStaticPayload(data.sample_route || {});
     const requestedVisits = Number(request.num_visits) || route.timeline?.length || 5;
-    const timeline = (route.timeline || [])
+    const requestedDistricts = request.districts || request.district || request.selectedDistricts || request.selected_districts || [];
+    const sourceTimeline = route.timeline || [];
+    const districtFilteredTimeline = filterItemsByDistrict(sourceTimeline, requestedDistricts);
+    const timeline = districtFilteredTimeline
       .slice(0, requestedVisits)
       .map((item, index) => ({ ...item, order: index + 1 }));
+    const warnings = [];
+    if (normalizeDistricts(requestedDistricts).length && timeline.length < requestedVisits) {
+      warnings.push(`Returned ${timeline.length} recommendations because selected district candidates were insufficient for requested ${requestedVisits} visits.`);
+    }
 
     return withStaticMeta({
       ...route,
@@ -305,6 +435,13 @@ async function getRouteFallback(path, body) {
         model: "static_demo_route",
       },
       timeline,
+      debug: buildDistrictDebug(
+        requestedDistricts,
+        sourceTimeline.length,
+        districtFilteredTimeline.length,
+        timeline,
+        warnings
+      ),
       insights: [
         "현재 정적 데모 모드로 실행 중입니다.",
         ...((route.insights || []).slice(0, 2)),

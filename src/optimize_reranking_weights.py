@@ -33,6 +33,7 @@ from evaluate_recommendations import (  # noqa: E402
     place_match_method,
     read_csv_with_fallback as read_eval_csv,
 )
+from backend.district_utils import filter_dataframe_by_district, normalize_district  # noqa: E402
 
 
 FEATURE_COLUMNS = [
@@ -295,7 +296,7 @@ def clean_text(value: object) -> str:
 
 
 def standard_district(value: object) -> str:
-    text = clean_text(value)
+    text = normalize_district(value) or clean_text(value)
     return DISTRICT_ALIASES.get(text, text)
 
 
@@ -335,12 +336,6 @@ def calc_district_bonus(row: pd.Series) -> float:
         return 0.0
     if query_district == candidate_district:
         return 1.0
-    if candidate_district in SEOUL_ADJACENCY.get(query_district, set()):
-        return 0.45
-    query_area = district_area(query_district)
-    candidate_area = district_area(candidate_district)
-    if query_area and query_area == candidate_area:
-        return 0.25
     return 0.0
 
 
@@ -577,6 +572,14 @@ def rerank_candidates(
 
     groups: list[pd.DataFrame] = []
     for _, group in scored.groupby("query_id", sort=False):
+        query_district = normalize_district(group["district"].iloc[0]) if "district" in group.columns and len(group) else None
+        group = filter_dataframe_by_district(
+            group,
+            query_district,
+            ("recommended_district", "district_normalized", "district_name", "자치구", "시군구", "SIG_KOR_NM"),
+        )
+        if group.empty:
+            continue
         top_group = group.sort_values(
             by=["final_variant_score", "baseline_score", "raw_rank"],
             ascending=[False, False, True],
@@ -586,6 +589,8 @@ def rerank_candidates(
     output_columns = RECOMMENDATION_COLUMNS.copy()
     if include_match_columns:
         output_columns.extend([column for column in MATCH_COLUMNS if column in scored.columns])
+    if not groups:
+        return pd.DataFrame(columns=output_columns)
     return pd.concat(groups, ignore_index=True)[output_columns]
 
 

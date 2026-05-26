@@ -36,6 +36,7 @@ from generate_recommendation_results import (  # noqa: E402
     validate_gold_queries,
 )
 from place_aliases import alias_candidates_for_query  # noqa: E402
+from backend.district_utils import filter_by_district, normalize_district  # noqa: E402
 
 
 RAW_OUTPUT_COLUMNS = [
@@ -100,7 +101,7 @@ def build_raw_rows_for_query(
     alias_path: str | None = None,
 ) -> list[dict[str, Any]]:
     query_id = clean_text(row["query_id"])
-    query_district = clean_text(row["district"])
+    query_district = normalize_district(row["district"]) or clean_text(row["district"])
     time_slot = derive_time_slot(row["time"])
     target_age_group = infer_target_age_group(row)
     recommender_types = infer_recommender_types(row)
@@ -118,7 +119,7 @@ def build_raw_rows_for_query(
             candidate_with_source["candidate_source"] = recommender_type
             candidates.append(candidate_with_source)
 
-    deduped_candidates = deduplicate_candidates(candidates)
+    deduped_candidates = filter_by_district(deduplicate_candidates(candidates), query_district)
     protected_top_k = min(10, top_k)
     protected_baseline = select_top_k_for_query(
         deduped_candidates,
@@ -151,7 +152,7 @@ def build_raw_rows_for_query(
 
     if use_alias_expansion:
         alias_score = 0.45 if min_protected_score == float("inf") else max(0.01, min_protected_score - 0.0001)
-        for candidate in alias_candidates_for_query(row, alias_path):
+        for candidate in filter_by_district(alias_candidates_for_query(row, alias_path), query_district):
             candidate = candidate.copy()
             candidate["score"] = round(max(score_value(candidate), alias_score), 4)
             key = (

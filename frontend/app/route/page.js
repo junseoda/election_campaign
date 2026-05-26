@@ -129,6 +129,8 @@ function normalizeRouteStop(item = {}, index = 0) {
     sequence: order,
     place_name: firstValue(item.place_name, item.name, item.title, item.recommended_place_name, nestedPlace.name, "장소 확인"),
     district: firstValue(item.district, item.gu, item.region, item.recommended_district, nestedPlace.district, "자치구 확인"),
+    district_normalized: firstValue(item.district_normalized, item.recommended_district_normalized, nestedPlace.district_normalized),
+    district_match: firstValue(item.district_match, nestedPlace.district_match, true),
     place_type: firstValue(item.place_type, item.type, item.category, item.recommended_place_type, nestedPlace.place_type, nestedPlace.type, "장소 유형"),
     start_time: startTime,
     end_time: firstValue(item.end_time),
@@ -222,12 +224,12 @@ function buildSwapOptions(item) {
     { place_name: "약수노인복지관", district: "중구", place_type: "복지시설", address: "서울 중구 다산로", reason: "복지 메시지를 차분히 확인하기 좋은 장소입니다." },
   ];
 
-  const sameContext = base.filter((candidate) =>
+  const sameDistrict = base.filter((candidate) =>
     candidate.place_name !== item?.place_name &&
-    (candidate.district === district || candidate.place_type === placeType)
+    candidate.district === district
   );
-  const fallback = base.filter((candidate) => candidate.place_name !== item?.place_name);
-  return [...sameContext, ...fallback].slice(0, 4);
+  const sameType = sameDistrict.filter((candidate) => candidate.place_type === placeType);
+  return [...sameType, ...sameDistrict].slice(0, 4);
 }
 
 function RouteForm({ form, options, onChange, onToggleArray, onSubmit, isSubmitting, isDirty, lastUpdated }) {
@@ -441,8 +443,10 @@ export default function RoutePlannerPage() {
   const [lastUpdated, setLastUpdated] = useState("");
   const [isSwapOpen, setIsSwapOpen] = useState(false);
   const timelineRefs = useRef({});
+  const previousDistrictsKeyRef = useRef(null);
 
   const routeStops = useMemo(() => buildRouteStops(route?.timeline || []), [route]);
+  const districtsKey = useMemo(() => JSON.stringify(form?.districts || []), [form?.districts]);
   const selectedItem = useMemo(
     () => routeStops.find((item) => item.id === selectedStopId) || routeStops[0],
     [routeStops, selectedStopId]
@@ -492,6 +496,23 @@ export default function RoutePlannerPage() {
   }, [loadInitialData]);
 
   useEffect(() => {
+    if (!form) {
+      return;
+    }
+    if (previousDistrictsKeyRef.current === null) {
+      previousDistrictsKeyRef.current = districtsKey;
+      return;
+    }
+    if (previousDistrictsKeyRef.current !== districtsKey) {
+      previousDistrictsKeyRef.current = districtsKey;
+      setRoute(null);
+      setSelectedStopId("stop-1");
+      setIsSwapOpen(false);
+      setLastUpdated("");
+    }
+  }, [districtsKey, form]);
+
+  useEffect(() => {
     try {
       const raw = window.localStorage.getItem(SAVED_STOPS_KEY);
       setSavedStopIds(raw ? JSON.parse(raw) : []);
@@ -527,9 +548,11 @@ export default function RoutePlannerPage() {
     }
 
     const requestPayload = normalizeRequest(form);
+    console.log("[Route Recommend Request]", requestPayload);
     try {
       setIsSubmitting(true);
       const payload = await postJson("/route/recommend", requestPayload);
+      console.log("[Route Recommend Response Debug]", payload.debug || payload);
       debugRoute("route response received", {
         endpoint: "/route/recommend",
         responseKeys: Object.keys(payload || {}),

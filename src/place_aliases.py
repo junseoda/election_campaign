@@ -15,6 +15,8 @@ from typing import Any
 
 import pandas as pd
 
+from backend.district_utils import normalize_district
+
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_ALIAS_PATH = PROJECT_ROOT / "data" / "processed" / "place_aliases.csv"
@@ -65,7 +67,7 @@ def normalize_place_key(value: object) -> str:
 
 
 def standardize_district(value: object) -> str:
-    text = clean_text(value)
+    text = normalize_district(value) or clean_text(value)
     return DISTRICT_ALIASES.get(text, text)
 
 

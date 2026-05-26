@@ -1,7 +1,7 @@
 from pathlib import Path
 import os
 import sys
-from typing import Literal
+from typing import Any, Literal
 
 from fastapi import FastAPI, HTTPException
 from fastapi.exceptions import RequestValidationError
@@ -23,6 +23,10 @@ for import_root in (PROJECT_ROOT, BACKEND_ROOT):
 
 from scripts.message_rules import recommend_messages  # noqa: E402
 from scripts.recommender import recommend_places  # noqa: E402
+try:
+    from backend.district_utils import normalize_districts, validate_recommendation_districts  # noqa: E402
+except ModuleNotFoundError:
+    from district_utils import normalize_districts, validate_recommendation_districts  # type: ignore  # noqa: E402
 from scripts.route_planner import build_campaign_route  # noqa: E402
 try:
     from services.dashboard_service import (  # type: ignore  # noqa: E402
@@ -60,6 +64,10 @@ class RecommendRequest(BaseModel):
     time_slot: TimeSlot
     place_type: PlaceType
     target_age_group: TargetAgeGroup
+    district: str | None = None
+    districts: list[str] | str | None = None
+    selectedDistricts: list[str] | str | None = None
+    top_n: int = 3
 
 
 class HealthResponse(BaseModel):
@@ -69,10 +77,21 @@ class HealthResponse(BaseModel):
 class RouteRequest(BaseModel):
     target_age_group: TargetAgeGroup
     route_template: RouteTemplate = "default"
+    district: str | None = None
+    districts: list[str] | str | None = None
+    selectedDistricts: list[str] | str | None = None
 
 
 class PlaceRecommendation(BaseModel):
+    place_id: str | None = None
     name: str
+    place_type: str | None = None
+    district_name: str | None = None
+    district: str | None = None
+    district_normalized: str | None = None
+    district_match: bool | None = None
+    latitude: float | None = None
+    longitude: float | None = None
     score: float
     reason: list[str]
 
@@ -86,6 +105,7 @@ class RecommendResponse(BaseModel):
     input: RecommendRequest
     places: list[PlaceRecommendation]
     messages: list[MessageRecommendation]
+    debug: dict[str, Any] | None = None
 
 
 class RouteItem(BaseModel):
@@ -158,11 +178,38 @@ def health() -> dict:
 @app.post("/recommend", response_model=RecommendResponse)
 def recommend(payload: RecommendRequest) -> dict:
     try:
-        places = recommend_places(
+        selected_districts = normalize_districts(
+            [
+                *([payload.district] if payload.district else []),
+                *(payload.districts if isinstance(payload.districts, list) else [payload.districts] if payload.districts else []),
+                *(
+                    payload.selectedDistricts
+                    if isinstance(payload.selectedDistricts, list)
+                    else [payload.selectedDistricts]
+                    if payload.selectedDistricts
+                    else []
+                ),
+            ]
+        )
+        recommendation_payload = recommend_places(
             payload.time_slot,
             payload.place_type,
             payload.target_age_group,
+            top_n=max(1, int(payload.top_n or 3)),
+            selected_districts=selected_districts,
+            include_debug=True,
         )
+        places = recommendation_payload["places"]
+        places, validation_warnings = validate_recommendation_districts(places, selected_districts)
+        debug = {
+            **recommendation_payload.get("debug", {}),
+            "selected_districts": selected_districts,
+            "district_mismatch_count": 0,
+            "warnings": [
+                *recommendation_payload.get("debug", {}).get("warnings", []),
+                *validation_warnings,
+            ],
+        }
         messages = recommend_messages(
             payload.place_type,
             payload.target_age_group,
@@ -174,7 +221,30 @@ def recommend(payload: RecommendRequest) -> dict:
         "input": payload.model_dump(),
         "places": places,
         "messages": messages,
+        "debug": debug,
     }
+
+
+def _request_selected_districts(payload: Any) -> list[str]:
+    return normalize_districts(
+        [
+            *([payload.district] if getattr(payload, "district", None) else []),
+            *(
+                payload.districts
+                if isinstance(getattr(payload, "districts", None), list)
+                else [payload.districts]
+                if getattr(payload, "districts", None)
+                else []
+            ),
+            *(
+                payload.selectedDistricts
+                if isinstance(getattr(payload, "selectedDistricts", None), list)
+                else [payload.selectedDistricts]
+                if getattr(payload, "selectedDistricts", None)
+                else []
+            ),
+        ]
+    )
 
 
 @app.post("/route", response_model=RouteResponse)
@@ -183,6 +253,7 @@ def route(payload: RouteRequest) -> dict:
         campaign_route = build_campaign_route(
             payload.target_age_group,
             payload.route_template,
+            selected_districts=_request_selected_districts(payload),
         )
     except ValueError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error

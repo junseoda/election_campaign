@@ -21,6 +21,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from scripts.recommender import recommend_places  # noqa: E402
+from backend.district_utils import filter_by_district, normalize_district  # noqa: E402
 
 
 SUPPORTED_RECOMMENDER_TYPES = ["market", "park", "subway", "senior_friendly"]
@@ -242,8 +243,8 @@ def score_value(candidate: dict[str, Any]) -> float:
 
 
 def district_bonus(row: pd.Series, candidate: dict[str, Any]) -> float:
-    query_district = clean_text(row.get("district", ""))
-    candidate_district = clean_text(candidate.get("district_name", ""))
+    query_district = normalize_district(row.get("district", ""))
+    candidate_district = normalize_district(candidate.get("district_name", ""))
     if query_district and candidate_district and query_district == candidate_district:
         return 0.18
     return 0.0
@@ -341,41 +342,16 @@ def variant_score(row: pd.Series, candidate: dict[str, Any], model_name: str) ->
 
 
 def select_top_k_for_query(candidates: list[dict[str, Any]], query_district: str, top_k: int) -> list[dict[str, Any]]:
+    filtered_candidates = filter_by_district(candidates, query_district)
+    if query_district:
+        candidates = filtered_candidates
+
     sorted_candidates = sorted(
         candidates,
         key=lambda candidate: (score_value(candidate), clean_text(candidate.get("name"))),
         reverse=True,
     )
-
-    same_district = [
-        candidate
-        for candidate in sorted_candidates
-        if query_district and clean_text(candidate.get("district_name")) == query_district
-    ]
-
-    if same_district:
-        selected = same_district[:top_k]
-        selected_keys = {
-            (
-                clean_text(candidate.get("name")),
-                clean_text(candidate.get("district_name")),
-                clean_text(candidate.get("place_type")),
-            )
-            for candidate in selected
-        }
-        for candidate in sorted_candidates:
-            key = (
-                clean_text(candidate.get("name")),
-                clean_text(candidate.get("district_name")),
-                clean_text(candidate.get("place_type")),
-            )
-            if key in selected_keys:
-                continue
-            selected.append(candidate)
-            if len(selected) >= top_k:
-                break
-    else:
-        selected = sorted_candidates[:top_k]
+    selected = sorted_candidates[:top_k]
 
     return sorted(
         selected[:top_k],
@@ -414,7 +390,7 @@ def build_recommendations_for_query(
     model_name: str,
 ) -> list[dict[str, Any]]:
     query_id = clean_text(row["query_id"])
-    query_district = clean_text(row["district"])
+    query_district = normalize_district(row["district"]) or clean_text(row["district"])
     time_slot = derive_time_slot(row["time"])
     target_age_group = infer_target_age_group(row)
     recommender_types = infer_recommender_types(row)
@@ -431,7 +407,7 @@ def build_recommendations_for_query(
             )
         )
 
-    deduped_candidates = deduplicate_candidates(candidates)
+    deduped_candidates = filter_by_district(deduplicate_candidates(candidates), query_district)
     if model_name == "baseline":
         selected = select_top_k_for_query(
             deduped_candidates,

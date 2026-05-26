@@ -10,6 +10,29 @@ from typing import Any
 
 import pandas as pd
 
+try:
+    from backend.district_utils import (
+        SEOUL_DISTRICT_LIST as CANONICAL_SEOUL_DISTRICTS,
+        count_district_mismatches,
+        filter_dataframe_by_district,
+        get_candidate_district,
+        get_dataframe_district_series,
+        normalize_district,
+        normalize_districts,
+        validate_recommendation_districts,
+    )
+except ModuleNotFoundError:
+    from district_utils import (  # type: ignore
+        SEOUL_DISTRICT_LIST as CANONICAL_SEOUL_DISTRICTS,
+        count_district_mismatches,
+        filter_dataframe_by_district,
+        get_candidate_district,
+        get_dataframe_district_series,
+        normalize_district,
+        normalize_districts,
+        validate_recommendation_districts,
+    )
+
 
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 REPOSITORY_ROOT = BACKEND_ROOT.parent
@@ -155,10 +178,9 @@ def _clean_text(value: Any) -> str:
 
 def _extract_district(*values: Any) -> str:
     for value in values:
-        text = _clean_text(value)
-        match = re.search(r"([가-힣]+구)", text)
-        if match:
-            return match.group(1)
+        district = normalize_district(value)
+        if district:
+            return district
     return ""
 
 
@@ -274,6 +296,8 @@ def _stable_mock_position(name: str, order: int) -> dict[str, float | None]:
 
 
 def _district_relation(previous_district: str, current_district: str) -> str:
+    previous_district = normalize_district(previous_district) or _clean_text(previous_district)
+    current_district = normalize_district(current_district) or _clean_text(current_district)
     if previous_district and current_district and previous_district == current_district:
         return "same"
     if current_district in ADJACENT_DISTRICTS.get(previous_district, set()):
@@ -352,6 +376,8 @@ def _target_fit(target: str, place_type: str, place_name: str) -> float:
 
 
 def _district_fit(candidate_district: str, preferred_districts: list[str]) -> float:
+    candidate_district = normalize_district(candidate_district) or _clean_text(candidate_district)
+    preferred_districts = normalize_districts(preferred_districts)
     if not preferred_districts:
         return 0.08
     if candidate_district in preferred_districts:
@@ -400,6 +426,11 @@ def _load_candidate_pool() -> pd.DataFrame:
     candidates["recommended_place_name"] = candidates["recommended_place_name"].fillna("").astype(str).str.strip()
     candidates = candidates[candidates["recommended_place_name"] != ""].copy()
     candidates["recommended_district"] = candidates["recommended_district"].apply(_clean_text)
+    candidates["district_normalized"] = get_dataframe_district_series(
+        candidates,
+        ("district_normalized", "recommended_district", "district", "district_name", "자치구", "시군구", "SIG_KOR_NM"),
+    )
+    candidates["recommended_district"] = candidates["district_normalized"].fillna(candidates["recommended_district"])
     candidates["recommended_place_type"] = candidates["recommended_place_type"].apply(_normalize_place_type)
     candidates["candidate_score"] = pd.to_numeric(candidates["candidate_score"], errors="coerce").fillna(0.0)
 
@@ -425,7 +456,9 @@ def _load_past_visits() -> pd.DataFrame:
     visits["date"] = pd.to_datetime(visits["date"], errors="coerce")
     visits["place_name"] = visits["place_name"].fillna("").astype(str).str.strip()
     visits["address"] = visits["address"].fillna("").astype(str).str.strip()
-    visits["district"] = visits["district"].fillna("").astype(str).str.strip()
+    visits["district"] = visits["district"].fillna("").astype(str).str.strip().apply(
+        lambda value: normalize_district(value) or value
+    )
     return visits
 
 
@@ -438,7 +471,7 @@ def _duplicate_penalty(
 ) -> float:
     penalty = 0.0
     place_name = _clean_text(candidate.get("recommended_place_name"))
-    district = _clean_text(candidate.get("recommended_district"))
+    district = get_candidate_district(candidate) or _clean_text(candidate.get("recommended_district"))
     place_type = _clean_text(candidate.get("recommended_place_type"))
 
     if not past_visits.empty:
@@ -471,7 +504,7 @@ def _diversity_bonus(
     selected_districts: set[str],
 ) -> float:
     place_type = _clean_text(candidate.get("recommended_place_type"))
-    district = _clean_text(candidate.get("recommended_district"))
+    district = get_candidate_district(candidate) or _clean_text(candidate.get("recommended_district"))
     bonus = 0.0
     if place_type and place_type not in selected_types:
         bonus += 0.08
@@ -490,7 +523,7 @@ def _sequence_reason(
     total_orders: int,
 ) -> str:
     place_type = _clean_text(candidate.get("recommended_place_type"))
-    district = _clean_text(candidate.get("recommended_district"))
+    district = get_candidate_district(candidate) or _clean_text(candidate.get("recommended_district"))
     hour = _parse_minutes(time_value) // 60
 
     if order == 1:
@@ -518,7 +551,7 @@ def _recommendation_reason(
     travel_minutes: int,
 ) -> str:
     place_type = _clean_text(candidate.get("recommended_place_type"))
-    district = _clean_text(candidate.get("recommended_district"))
+    district = get_candidate_district(candidate) or _clean_text(candidate.get("recommended_district"))
     hour = _parse_minutes(time_value) // 60
 
     if 7 <= hour < 10:
@@ -541,9 +574,12 @@ def _build_route(request: RouteRequestData) -> dict[str, Any]:
     candidates = _load_candidate_pool()
     past_visits = _load_past_visits() if request.avoid_duplicates else pd.DataFrame()
     time_slots = _build_time_slots(request.start_time, request.end_time, request.num_visits)
+    selected_request_districts = normalize_districts(request.districts)
+    selected_request_district_set = set(selected_request_districts)
     start_district = infer_start_location_district(request.start_location) or (
-        request.districts[0] if request.districts else ""
+        selected_request_districts[0] if selected_request_districts else ""
     )
+    start_district = normalize_district(start_district) or start_district
 
     preferred_place_types = set(request.preferred_place_types or [])
     selected_names: set[str] = set()
@@ -553,15 +589,20 @@ def _build_route(request: RouteRequestData) -> dict[str, Any]:
     selected_type_counts: dict[str, int] = {}
     previous_district = start_district
     timeline = []
+    warnings: list[str] = []
 
-    filtered = candidates.copy()
-    if request.districts:
-        district_mask = filtered["recommended_district"].isin(request.districts)
-        adjacent_mask = filtered["recommended_district"].apply(
-            lambda district: any(_district_relation(district, preferred) == "adjacent" for preferred in request.districts)
+    candidate_count_before_district_filter = int(len(candidates))
+    filtered = filter_dataframe_by_district(
+        candidates,
+        selected_request_districts,
+        ("district_normalized", "recommended_district", "district", "district_name", "자치구", "시군구", "SIG_KOR_NM"),
+    )
+    candidate_count_after_district_filter = int(len(filtered))
+    if selected_request_districts and candidate_count_after_district_filter == 0:
+        warnings.append(
+            "No candidates found inside selected districts: "
+            + ", ".join(selected_request_districts)
         )
-        if int((district_mask | adjacent_mask).sum()) >= max(3, request.num_visits):
-            filtered = filtered[district_mask | adjacent_mask].copy()
 
     for order, time_value in enumerate(time_slots, start=1):
         scored_rows = []
@@ -576,11 +617,11 @@ def _build_route(request: RouteRequestData) -> dict[str, Any]:
                 continue
 
             place_type = _clean_text(candidate.get("recommended_place_type"))
-            district = _clean_text(candidate.get("recommended_district"))
+            district = get_candidate_district(candidate) or _clean_text(candidate.get("recommended_district"))
             optimized_place_score = float(candidate.get("candidate_score", 0.0))
             time_score = _time_slot_fit(time_value, place_type, request.campaign_goal)
             target_score = _target_fit(request.target_voter_group, place_type, place_name)
-            district_score = _district_fit(district, request.districts)
+            district_score = _district_fit(district, selected_request_districts)
             start_score = _start_location_fit(order, start_district, district)
             diversity_score = _diversity_bonus(candidate, selected_types, selected_districts)
             if preferred_place_types and place_type in preferred_place_types:
@@ -634,7 +675,7 @@ def _build_route(request: RouteRequestData) -> dict[str, Any]:
             candidate.get("recommended_place_type"),
             candidate.get("recommended_district"),
         )
-        district = _clean_text(candidate.get("recommended_district"))
+        district = get_candidate_district(candidate) or _clean_text(candidate.get("recommended_district"))
         place_type = _clean_text(candidate.get("recommended_place_type"))
         selected_names.add(raw_place_name)
         selected_names.add(place_name)
@@ -660,6 +701,8 @@ def _build_route(request: RouteRequestData) -> dict[str, Any]:
                 "time": time_value,
                 "place_name": place_name,
                 "district": district,
+                "district_normalized": district,
+                "district_match": district in selected_request_district_set if selected_request_district_set else True,
                 "place_type": place_type,
                 "address": _normalize_address(candidate.get("address")),
                 "candidate_source": _clean_text(candidate.get("candidate_source")),
@@ -686,6 +729,19 @@ def _build_route(request: RouteRequestData) -> dict[str, Any]:
             }
         )
         previous_district = district
+
+    district_removed_count = count_district_mismatches(timeline, selected_request_districts)
+    timeline, validation_warnings = validate_recommendation_districts(timeline, selected_request_districts)
+    warnings.extend(validation_warnings)
+    if len(timeline) < request.num_visits:
+        warnings.append(
+            "Returned "
+            + str(len(timeline))
+            + " recommendations because selected district candidates were insufficient for requested "
+            + str(request.num_visits)
+            + " visits."
+        )
+    district_mismatch_count = count_district_mismatches(timeline, selected_request_districts)
 
     total_minutes = _parse_minutes(request.end_time) - _parse_minutes(request.start_time)
     estimated_total_time = f"{total_minutes // 60}시간 {total_minutes % 60}분"
@@ -714,6 +770,15 @@ def _build_route(request: RouteRequestData) -> dict[str, Any]:
         },
         "timeline": timeline,
         "insights": insights,
+        "debug": {
+            "selected_districts": selected_request_districts,
+            "candidate_count_before_district_filter": candidate_count_before_district_filter,
+            "candidate_count_after_district_filter": candidate_count_after_district_filter,
+            "district_filter_applied": bool(selected_request_districts),
+            "district_mismatch_count": district_mismatch_count,
+            "district_removed_count": district_removed_count,
+            "warnings": warnings,
+        },
         "map": {
             "mode": "mock_preview",
             "start_location": request.start_location,
@@ -725,7 +790,7 @@ def _build_route(request: RouteRequestData) -> dict[str, Any]:
 
 def get_route_options() -> dict[str, Any]:
     return {
-        "districts": SEOUL_DISTRICTS,
+        "districts": CANONICAL_SEOUL_DISTRICTS,
         "target_voter_groups": TARGET_GROUPS,
         "campaign_goals": CAMPAIGN_GOALS,
         "place_types": PLACE_TYPES,
@@ -755,13 +820,30 @@ def get_default_route_request() -> dict[str, Any]:
     }
 
 
+def _coerce_text_list(value: Any) -> list[str]:
+    if value is None:
+        return []
+    if isinstance(value, str):
+        return [_clean_text(value)] if _clean_text(value) else []
+    if isinstance(value, (list, tuple, set)):
+        return [_clean_text(item) for item in value if _clean_text(item)]
+    return [_clean_text(value)] if _clean_text(value) else []
+
+
+def _payload_districts(payload: dict[str, Any]) -> list[str]:
+    values: list[str] = []
+    for key in ("districts", "district", "selectedDistricts", "selected_districts"):
+        values.extend(_coerce_text_list(payload.get(key)))
+    return normalize_districts(values)
+
+
 def recommend_route(payload: dict[str, Any]) -> dict[str, Any]:
     request = RouteRequestData(
         date=_clean_text(payload.get("date")) or get_default_route_request()["date"],
         start_time=_clean_text(payload.get("start_time")) or "09:00",
         end_time=_clean_text(payload.get("end_time")) or "18:00",
         start_location=_clean_text(payload.get("start_location")) or "서울시청",
-        districts=[_clean_text(value) for value in payload.get("districts", []) if _clean_text(value)],
+        districts=_payload_districts(payload),
         target_voter_group=_clean_text(payload.get("target_voter_group")) or "직장인",
         campaign_goal=_clean_text(payload.get("campaign_goal")) or "퇴근인사",
         preferred_place_types=[

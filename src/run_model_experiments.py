@@ -22,6 +22,7 @@ if str(Path(__file__).resolve().parent) not in sys.path:
     sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from evaluate_recommendations import evaluate, read_csv_with_fallback as read_eval_csv  # noqa: E402
+from backend.district_utils import filter_dataframe_by_district, normalize_district  # noqa: E402
 
 
 MODEL_VARIANTS = [
@@ -201,7 +202,7 @@ def expected_place_types(row: pd.Series) -> set[str]:
 
 
 def calc_district_bonus(row: pd.Series) -> float:
-    if clean_text(row.get("district")) and clean_text(row.get("district")) == clean_text(row.get("recommended_district")):
+    if normalize_district(row.get("district")) and normalize_district(row.get("district")) == normalize_district(row.get("recommended_district")):
         return 0.18
     return 0.0
 
@@ -325,6 +326,14 @@ def build_recommendation_results_from_raw(
     result_groups: list[pd.DataFrame] = []
 
     for _, group in scored.groupby("query_id", sort=False):
+        query_district = normalize_district(group["district"].iloc[0]) if "district" in group.columns and len(group) else None
+        group = filter_dataframe_by_district(
+            group,
+            query_district,
+            ("recommended_district", "district_normalized", "district_name", "자치구", "시군구", "SIG_KOR_NM"),
+        )
+        if group.empty:
+            continue
         top_group = group.sort_values(
             by=["score", "baseline_score", "raw_rank"],
             ascending=[False, False, True],

@@ -5,6 +5,27 @@ import re
 
 import pandas as pd
 
+try:
+    from backend.district_utils import (
+        add_district_fields,
+        count_district_mismatches,
+        filter_dataframe_by_district,
+        get_candidate_district,
+        normalize_district,
+        normalize_districts,
+        validate_recommendation_districts,
+    )
+except ModuleNotFoundError:
+    from district_utils import (  # type: ignore
+        add_district_fields,
+        count_district_mismatches,
+        filter_dataframe_by_district,
+        get_candidate_district,
+        normalize_district,
+        normalize_districts,
+        validate_recommendation_districts,
+    )
+
 
 PROCESSED_DIR = Path(__file__).resolve().parent.parent / "data" / "processed"
 AUX_SUMMARY_PATH = PROCESSED_DIR / "aux_feature_summary.json"
@@ -298,6 +319,10 @@ def optional_float(value: object) -> float | None:
 
 def extract_district_name(*values: object) -> str | None:
     for value in values:
+        district = normalize_district(value)
+        if district:
+            return district
+
         text = normalize_text(value)
         if not text:
             continue
@@ -339,17 +364,64 @@ def build_place_result(
     district_name: object = None,
     latitude: object = None,
     longitude: object = None,
+    selected_districts: object = None,
 ) -> dict:
-    return {
+    district = extract_district_name(district_name)
+    result = {
         "place_id": optional_text(place_id),
         "name": normalize_text(name),
         "place_type": place_type,
-        "district_name": extract_district_name(district_name),
+        "district_name": district,
+        "district": district,
         "latitude": optional_float(latitude),
         "longitude": optional_float(longitude),
         "score": round(float(score), 4),
         "reason": reason,
     }
+    return add_district_fields(result, selected_districts)
+
+
+def build_debug(
+    selected_districts: object,
+    before_count: int,
+    after_count: int,
+    results: list[dict],
+    warnings: list[str] | None = None,
+) -> dict:
+    normalized_selected = normalize_districts(selected_districts)
+    return {
+        "selected_districts": normalized_selected,
+        "candidate_count_before_district_filter": int(before_count),
+        "candidate_count_after_district_filter": int(after_count),
+        "district_filter_applied": bool(normalized_selected),
+        "district_mismatch_count": count_district_mismatches(results, normalized_selected),
+        "warnings": warnings or [],
+    }
+
+
+def finalize_place_results(
+    results: list[dict],
+    selected_districts: object,
+    before_count: int,
+    after_count: int,
+    top_n: int,
+    return_debug: bool,
+) -> list[dict] | dict:
+    warnings: list[str] = []
+    results, validation_warnings = validate_recommendation_districts(results, selected_districts)
+    warnings.extend(validation_warnings)
+    if normalize_districts(selected_districts) and len(results) < top_n:
+        warnings.append(
+            "Returned "
+            + str(len(results))
+            + " recommendations because selected district candidates were insufficient for requested "
+            + str(top_n)
+            + " places."
+        )
+    debug = build_debug(selected_districts, before_count, after_count, results, warnings)
+    if return_debug:
+        return {"places": results, "debug": debug}
+    return results
 
 
 def add_subway_interaction_features(
@@ -542,7 +614,13 @@ def build_market_reason(
     return reason
 
 
-def recommend_subway(time_slot: str, target_age_group: str, top_n: int = 3) -> list[dict]:
+def recommend_subway(
+    time_slot: str,
+    target_age_group: str,
+    top_n: int = 3,
+    selected_districts: object = None,
+    return_debug: bool = False,
+) -> list[dict] | dict:
     slot = normalize_time_slot(time_slot)
     dataframe = load_cleaned_csv("cleaned_subway.csv")
     aux_summary = load_aux_feature_summary()
@@ -556,6 +634,10 @@ def recommend_subway(time_slot: str, target_age_group: str, top_n: int = 3) -> l
     latest_month = int(dataframe["use_month"].max())
     latest_data = dataframe[dataframe["use_month"] == latest_month].copy()
     latest_data = latest_data[latest_data["station_name"] != ""].copy()
+    latest_data["district_name"] = latest_data["station_name"].apply(infer_subway_district_name)
+    before_count = int(len(latest_data))
+    latest_data = filter_dataframe_by_district(latest_data, selected_districts, ("district_name", "station_name"))
+    after_count = int(len(latest_data))
 
     selected_flow_column = "morning_total_in" if slot == "morning" else "afternoon_total_in"
     latest_data["selected_flow"] = latest_data[selected_flow_column]
@@ -565,7 +647,6 @@ def recommend_subway(time_slot: str, target_age_group: str, top_n: int = 3) -> l
     latest_data["age_match_score"] = 1.0 if target_age_group == "20_40" else 0.55
     latest_data["context_score"] = normalize_series(latest_data["all_day_flow"])
     latest_data["facility_score"] = 0.60
-    latest_data["district_name"] = latest_data["station_name"].apply(infer_subway_district_name)
 
     worker_age_aux = None
     if target_age_group == "20_40":
@@ -626,13 +707,20 @@ def recommend_subway(time_slot: str, target_age_group: str, top_n: int = 3) -> l
                 longitude=None,
                 score=float(row["final_score"]),
                 reason=build_subway_reason(row, slot, latest_month, auxiliary_notes),
+                selected_districts=selected_districts,
             )
         )
 
-    return results
+    return finalize_place_results(results, selected_districts, before_count, after_count, top_n, return_debug)
 
 
-def recommend_parks(time_slot: str, target_age_group: str, top_n: int = 3) -> list[dict]:
+def recommend_parks(
+    time_slot: str,
+    target_age_group: str,
+    top_n: int = 3,
+    selected_districts: object = None,
+    return_debug: bool = False,
+) -> list[dict] | dict:
     slot = normalize_time_slot(time_slot)
     dataframe = load_cleaned_csv("cleaned_parks.csv")
     aux_summary = load_aux_feature_summary()
@@ -644,6 +732,9 @@ def recommend_parks(time_slot: str, target_age_group: str, top_n: int = 3) -> li
     dataframe["area_sqm"] = pd.to_numeric(dataframe["area_sqm"], errors="coerce").fillna(0)
 
     dataframe = dataframe[dataframe["park_name"] != ""].copy()
+    before_count = int(len(dataframe))
+    dataframe = filter_dataframe_by_district(dataframe, selected_districts, ("region", "park_address"))
+    after_count = int(len(dataframe))
     dataframe["facility_text_length"] = dataframe["main_facilities"].str.len()
     dataframe["matched_keywords"] = dataframe["main_facilities"].apply(
         lambda value: extract_matching_keywords(value, PARK_FEATURE_KEYWORDS)
@@ -655,8 +746,8 @@ def recommend_parks(time_slot: str, target_age_group: str, top_n: int = 3) -> li
     keyword_score = dataframe["matched_keywords"].apply(
         lambda values: len(values) / len(PARK_FEATURE_KEYWORDS)
     )
-    region_score = dataframe["region"].apply(
-        lambda value: 1.0 if value in SEOUL_DISTRICTS else 0.45
+    region_score = dataframe["district_normalized"].apply(
+        lambda value: 1.0 if normalize_district(value) in SEOUL_DISTRICTS else 0.45
     )
 
     dataframe["time_match_score"] = 1.0 if slot == "afternoon" else 0.75
@@ -729,13 +820,20 @@ def recommend_parks(time_slot: str, target_age_group: str, top_n: int = 3) -> li
                 longitude=row.get("longitude"),
                 score=float(row["final_score"]),
                 reason=build_park_reason(row, slot, target_age_group, auxiliary_notes),
+                selected_districts=selected_districts,
             )
         )
 
-    return results
+    return finalize_place_results(results, selected_districts, before_count, after_count, top_n, return_debug)
 
 
-def recommend_senior(time_slot: str, target_age_group: str, top_n: int = 3) -> list[dict]:
+def recommend_senior(
+    time_slot: str,
+    target_age_group: str,
+    top_n: int = 3,
+    selected_districts: object = None,
+    return_debug: bool = False,
+) -> list[dict] | dict:
     slot = normalize_time_slot(time_slot)
     dataframe = load_cleaned_csv("cleaned_senior.csv")
     aux_summary = load_aux_feature_summary()
@@ -751,6 +849,9 @@ def recommend_senior(time_slot: str, target_age_group: str, top_n: int = 3) -> l
         & (dataframe["district_name"] != "")
         & (dataframe["facility_type"] != "")
     ].copy()
+    before_count = int(len(dataframe))
+    dataframe = filter_dataframe_by_district(dataframe, selected_districts, ("district_name", "facility_address"))
+    after_count = int(len(dataframe))
 
     dataframe["matched_keywords"] = dataframe.apply(
         lambda row: extract_matching_keywords(
@@ -850,13 +951,20 @@ def recommend_senior(time_slot: str, target_age_group: str, top_n: int = 3) -> l
                 longitude=None,
                 score=float(row["final_score"]),
                 reason=build_senior_reason(row, slot, target_age_group, auxiliary_notes),
+                selected_districts=selected_districts,
             )
         )
 
-    return results
+    return finalize_place_results(results, selected_districts, before_count, after_count, top_n, return_debug)
 
 
-def recommend_market(time_slot: str, target_age_group: str, top_n: int = 3) -> list[dict]:
+def recommend_market(
+    time_slot: str,
+    target_age_group: str,
+    top_n: int = 3,
+    selected_districts: object = None,
+    return_debug: bool = False,
+) -> list[dict] | dict:
     slot = normalize_time_slot(time_slot)
     dataframe = load_cleaned_csv("cleaned_market.csv")
     aux_summary = load_aux_feature_summary()
@@ -874,6 +982,9 @@ def recommend_market(time_slot: str, target_age_group: str, top_n: int = 3) -> l
         & (dataframe["district_name"] != "")
         & (dataframe["market_address"] != "")
     ].copy()
+    before_count = int(len(dataframe))
+    dataframe = filter_dataframe_by_district(dataframe, selected_districts, ("district_name", "market_address"))
+    after_count = int(len(dataframe))
 
     store_count_score = normalize_series(dataframe["store_count"])
     floor_area_score = normalize_series(dataframe["floor_area"].clip(lower=0))
@@ -966,10 +1077,11 @@ def recommend_market(time_slot: str, target_age_group: str, top_n: int = 3) -> l
                 longitude=None,
                 score=float(row["final_score"]),
                 reason=build_market_reason(row, slot, target_age_group, auxiliary_notes),
+                selected_districts=selected_districts,
             )
         )
 
-    return results
+    return finalize_place_results(results, selected_districts, before_count, after_count, top_n, return_debug)
 
 
 def recommend_places(
@@ -977,16 +1089,42 @@ def recommend_places(
     place_type: str,
     target_age_group: str,
     top_n: int = 3,
-) -> list[dict]:
+    selected_districts: object = None,
+    include_debug: bool = False,
+) -> list[dict] | dict:
     normalized_place_type = normalize_place_type(place_type)
 
     if normalized_place_type == "subway":
-        return recommend_subway(time_slot, target_age_group, top_n=top_n)
+        return recommend_subway(
+            time_slot,
+            target_age_group,
+            top_n=top_n,
+            selected_districts=selected_districts,
+            return_debug=include_debug,
+        )
     if normalized_place_type == "park":
-        return recommend_parks(time_slot, target_age_group, top_n=top_n)
+        return recommend_parks(
+            time_slot,
+            target_age_group,
+            top_n=top_n,
+            selected_districts=selected_districts,
+            return_debug=include_debug,
+        )
     if normalized_place_type == "market":
-        return recommend_market(time_slot, target_age_group, top_n=top_n)
-    return recommend_senior(time_slot, target_age_group, top_n=top_n)
+        return recommend_market(
+            time_slot,
+            target_age_group,
+            top_n=top_n,
+            selected_districts=selected_districts,
+            return_debug=include_debug,
+        )
+    return recommend_senior(
+        time_slot,
+        target_age_group,
+        top_n=top_n,
+        selected_districts=selected_districts,
+        return_debug=include_debug,
+    )
 
 
 if __name__ == "__main__":

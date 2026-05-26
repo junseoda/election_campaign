@@ -6,6 +6,19 @@ from typing import Any
 
 import pandas as pd
 
+try:
+    from backend.district_utils import (
+        count_district_mismatches,
+        filter_dataframe_by_district,
+        normalize_districts,
+    )
+except ModuleNotFoundError:
+    from district_utils import (  # type: ignore
+        count_district_mismatches,
+        filter_dataframe_by_district,
+        normalize_districts,
+    )
+
 
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 REPOSITORY_ROOT = BACKEND_ROOT.parent
@@ -130,13 +143,31 @@ def get_optimized_recommendations(query_id: str | None = None, limit: int = 10) 
     if query_match.empty:
         raise KeyError(f"unknown query_id: {query_id}")
 
+    selected_districts = normalize_districts(query_match.iloc[0].get("district"))
     recommendation_match = recommendations[
         recommendations["query_id"].astype(str) == str(query_id)
     ].copy()
+    candidate_count_before_district_filter = int(len(recommendation_match))
+    recommendation_match = filter_dataframe_by_district(
+        recommendation_match,
+        selected_districts,
+        ("recommended_district", "district", "district_name", "자치구", "시군구", "SIG_KOR_NM"),
+    )
+    candidate_count_after_district_filter = int(len(recommendation_match))
     if "rank" in recommendation_match.columns:
         recommendation_match = recommendation_match.sort_values("rank")
     else:
         recommendation_match = recommendation_match.sort_values("score", ascending=False)
+    recommendation_records = _records(recommendation_match, limit=limit)
+    warnings: list[str] = []
+    if selected_districts and len(recommendation_records) < limit:
+        warnings.append(
+            "Returned "
+            + str(len(recommendation_records))
+            + " recommendations because selected district candidates were insufficient for requested "
+            + str(limit)
+            + " places."
+        )
 
     coverage = _read_csv(RAW_COVERAGE_PATH)
     coverage_match = coverage[coverage["query_id"].astype(str) == str(query_id)]
@@ -147,9 +178,17 @@ def get_optimized_recommendations(query_id: str | None = None, limit: int = 10) 
     return {
         "model_name": "optimized_proposed",
         "query": _records(query_match)[0],
-        "recommendations": _records(recommendation_match, limit=limit),
+        "recommendations": recommendation_records,
         "coverage": _records(coverage_match),
         "hit_analysis": _records(hit_match),
+        "debug": {
+            "selected_districts": selected_districts,
+            "candidate_count_before_district_filter": candidate_count_before_district_filter,
+            "candidate_count_after_district_filter": candidate_count_after_district_filter,
+            "district_filter_applied": bool(selected_districts),
+            "district_mismatch_count": count_district_mismatches(recommendation_records, selected_districts),
+            "warnings": warnings,
+        },
         "best_weights": _read_json(BEST_WEIGHTS_PATH).get("best_weights", {}),
         "source_files": {
             "gold": _source(GOLD_QUERIES_PATH),

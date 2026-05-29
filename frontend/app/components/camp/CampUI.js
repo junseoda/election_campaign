@@ -1,6 +1,7 @@
 "use client";
 
 import { DISTRICT_FALLBACK_SEEDS } from "./districtFallbackSeeds";
+import { STATIC_REAL_ROUTE_CANDIDATES } from "./staticRealRouteCandidates";
 
 const NAV_ITEMS = [
   { key: "home", label: "홈", href: "/", caption: "운영 홈" },
@@ -468,6 +469,8 @@ const STATIC_DISTRICT_RECOMMENDATION_CANDIDATES = Object.fromEntries(
     (DISTRICT_FALLBACK_SEEDS[district] || []).map(recommendationFallbackSeedToCandidate),
   ])
 );
+
+const STATIC_REAL_ROUTE_CANDIDATE_LIST = Object.values(STATIC_REAL_ROUTE_CANDIDATES).flat();
 
 const STATIC_RECOMMENDATION_QUERIES = [
   {
@@ -1023,6 +1026,7 @@ async function getRouteFallback(path, body) {
     const requestedDistricts = request.districts || request.district || request.selectedDistricts || request.selected_districts || [];
     const sourceTimeline = route.timeline || [];
     const staticRealSourceGroups = [
+      { items: STATIC_REAL_ROUTE_CANDIDATE_LIST, source: "public_csv" },
       { items: sourceTimeline, source: "frontend_static_json" },
       { items: recommendationData.optimized_recommendations || [], source: "public_csv" },
       { items: recommendationData.queries || [], source: "public_csv" },
@@ -1210,6 +1214,7 @@ export async function fetchJson(path, options = {}) {
       payload,
       requestBody,
       [
+        { items: STATIC_REAL_ROUTE_CANDIDATE_LIST, source: "public_csv" },
         { items: staticRouteData.sample_route?.timeline || [], source: "frontend_static_json" },
         { items: staticRecommendationData.optimized_recommendations || [], source: "public_csv" },
         { items: staticRecommendationData.queries || [], source: "public_csv" },

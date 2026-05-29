@@ -780,7 +780,7 @@ function buildStaticRecommendationFillers(query, selectedDistricts, count, exist
   });
 }
 
-function ensureDistrictSafeRoutePayload(payload = {}, request = {}) {
+function ensureDistrictSafeRoutePayload(payload = {}, request = {}, staticRealSourceGroups = []) {
   const selectedDistricts = request.districts || request.district || request.selectedDistricts || request.selected_districts || [];
   const selected = normalizeDistricts(selectedDistricts);
   if (!selected.length) {
@@ -797,15 +797,30 @@ function ensureDistrictSafeRoutePayload(payload = {}, request = {}) {
   let source = payload.debug?.source || "backend_api";
 
   if (timeline.length < requestedVisits) {
+    const realFillers = buildStaticRealRouteFillers(
+      request,
+      selected,
+      requestedVisits - timeline.length,
+      timeline,
+      staticRealSourceGroups
+    );
+    if (realFillers.length) {
+      timeline = [...timeline, ...realFillers].slice(0, requestedVisits);
+      fallbackStage = timeline.length >= requestedVisits ? "all_real_district_candidates" : fallbackStage;
+      warnings.push("선택한 자치구 내 실제 후보를 우선 사용하고 부족한 조건을 완화했습니다.");
+    }
+  }
+
+  if (timeline.length < requestedVisits) {
     const fillers = buildStaticRouteFillers(request, selected, requestedVisits - timeline.length, timeline);
     timeline = [...timeline, ...fillers].slice(0, requestedVisits);
     if (fillers.length) {
       fallbackUsed = true;
       fallbackStage = fillers.some((item) => item.source === "synthetic_district_fallback")
         ? "synthetic_district_fallback"
-        : "district_fallback_seed";
-      source = fallbackStage;
-      warnings.push("선택한 자치구 내 기본 후보를 사용했습니다.");
+        : (timeline.some((item) => !isFallbackCandidate(item)) ? "fill_missing_only" : "district_fallback_seed");
+      source = timeline.some((item) => !isFallbackCandidate(item)) ? source : fallbackStage;
+      warnings.push("선택한 자치구 내 실제 후보를 우선 사용하고 부족한 일정만 기본 후보로 채웠습니다.");
     }
   }
 
@@ -819,6 +834,7 @@ function ensureDistrictSafeRoutePayload(payload = {}, request = {}) {
   if (timeline.some((item) => item.lat == null || item.lng == null)) {
     warnings.push("좌표가 없는 후보는 지도에 권역 기준 위치로 표시되며, 타임라인에는 정상 표시됩니다.");
   }
+  const staticRealCandidateCount = collectStaticRealRouteCandidates(request, selected, staticRealSourceGroups).length;
 
   return {
     ...payload,
@@ -840,7 +856,7 @@ function ensureDistrictSafeRoutePayload(payload = {}, request = {}) {
     timeline,
     debug: buildDistrictDebug(
       selected,
-      sourceTimeline.length + countStaticRouteCandidatePool(selected),
+      sourceTimeline.length + staticRealCandidateCount + countStaticRouteCandidatePool(selected),
       timeline.length,
       timeline,
       [...new Set(warnings)],
@@ -1179,7 +1195,26 @@ export async function fetchJson(path, options = {}) {
 
   const payload = await response.json();
   if (getRequestUrl(path).pathname === "/route/recommend") {
-    return ensureDistrictSafeRoutePayload(payload, requestBody);
+    let staticRouteData = {};
+    let staticRecommendationData = {};
+    try {
+      [staticRouteData, staticRecommendationData] = await Promise.all([
+        loadStaticData("map_routes.json").catch(() => ({})),
+        loadStaticData("recommendation_results.json").catch(() => ({})),
+      ]);
+    } catch (error) {
+      staticRouteData = {};
+      staticRecommendationData = {};
+    }
+    return ensureDistrictSafeRoutePayload(
+      payload,
+      requestBody,
+      [
+        { items: staticRouteData.sample_route?.timeline || [], source: "frontend_static_json" },
+        { items: staticRecommendationData.optimized_recommendations || [], source: "public_csv" },
+        { items: staticRecommendationData.queries || [], source: "public_csv" },
+      ]
+    );
   }
   return ensureDistrictSafeOptimizedPayload(path, payload);
 }

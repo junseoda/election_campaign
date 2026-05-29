@@ -57,6 +57,9 @@ function firstValue(...values) {
 }
 
 function toNumberOrNull(value) {
+  if (value === undefined || value === null || value === "") {
+    return null;
+  }
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : null;
 }
@@ -567,6 +570,9 @@ export default function RoutePlannerPage() {
     try {
       setIsSubmitting(true);
       const payload = await postJson("/route/recommend", requestPayload);
+      if (typeof window !== "undefined") {
+        window.__lastRouteDebug = payload.debug || null;
+      }
       console.log("[Route Recommend Response Debug]", payload.debug || payload);
       debugRoute("route response received", {
         endpoint: "/route/recommend",
@@ -578,6 +584,9 @@ export default function RoutePlannerPage() {
         throw new Error("동선 API 응답에 방문 지점이 없습니다.");
       }
       setRoute(normalizedPayload);
+      if (typeof window !== "undefined") {
+        window.__lastNormalizedRouteDebug = normalizedPayload.debug || null;
+      }
       setSelectedStopId(normalizedPayload.timeline[0]?.id || "stop-1");
       setIsDirty(false);
       setLastUpdated("방금 전");

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import csv
+import json
 import sys
 from pathlib import Path
 
@@ -71,6 +72,9 @@ def check_district(district: str) -> dict:
     return {
         "district": district,
         "result_count": len(timeline),
+        "real_candidate_count": int(debug.get("real_candidate_count") or 0),
+        "fallback_candidate_count": int(debug.get("fallback_candidate_count") or 0),
+        "source_counts": json.dumps(debug.get("source_counts", {}), ensure_ascii=False, sort_keys=True),
         "districts_returned": "|".join(districts_returned),
         "mismatch_count": mismatch_count,
         "fallback_used": str(bool(debug.get("fallback_used"))).lower(),
@@ -85,6 +89,9 @@ def main() -> int:
         fieldnames=[
             "district",
             "result_count",
+            "real_candidate_count",
+            "fallback_candidate_count",
+            "source_counts",
             "districts_returned",
             "mismatch_count",
             "fallback_used",

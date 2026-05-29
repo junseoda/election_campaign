@@ -218,6 +218,10 @@ output/experiments_optimized/
 
 `raw_candidate_coverage.csv`는 정답 장소가 raw 후보군 Top50 안에 존재하는지 분석합니다. 정답이 raw 후보군에 없으면 reranking만으로는 맞출 수 없으므로, 논문에서는 후보군 생성 단계의 한계로 해석할 수 있습니다.
 
+## 실시간 서비스 fallback 주의
+
+district_fallback_seed는 실시간 서비스 시연 안정성을 위한 fallback이며, Gold Set 기반 evaluation 성능 수치에는 사용하지 않는다.
+
 ## Candidate Generation 한계 분석
 
 최적화된 reranking 이후에도 Recall@10이 0.2714에서 더 오르지 않는 이유를 확인하기 위해 raw 후보군 coverage와 hit/miss를 분석합니다.

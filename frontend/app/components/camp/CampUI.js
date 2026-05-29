@@ -34,6 +34,26 @@ const PLACE_TYPE_LABELS = {
   sports: "체육시설",
 };
 
+const FALLBACK_SOURCES = new Set(["district_fallback_seed", "synthetic_district_fallback"]);
+
+const SOURCE_PRIORITY = {
+  backend_api: 1,
+  route_candidate_pool: 1,
+  market_csv: 2,
+  park_csv: 2,
+  subway_csv: 2,
+  welfare_csv: 2,
+  medical_welfare_csv: 2,
+  commercial_worker_csv: 2,
+  commercial_street_csv: 2,
+  public_csv: 2,
+  frontend_static_json: 3,
+  relaxed_real_candidate: 4,
+  address_based_candidate: 5,
+  district_fallback_seed: 90,
+  synthetic_district_fallback: 100,
+};
+
 const SCORE_ROWS = [
   ["optimized_place_score", "장소 기본점"],
   ["time_slot_fit_score", "시간대 보정"],
@@ -134,6 +154,19 @@ export function buildShortReason(item = {}) {
     return "생활권 주민과 짧게 인사하기 좋은 열린 공간입니다.";
   }
   return item.recommendation_reason || "시간대와 지역 조건에 맞는 후보지입니다.";
+}
+
+function getNaturalCampaignReason(placeType) {
+  if (placeType === "교통거점") {
+    return "주민 이동이 많은 생활 거점으로 현장 인사를 진행하기 좋습니다.";
+  }
+  if (placeType === "전통시장" || placeType === "골목상권") {
+    return "지역 상권과 생활 동선을 함께 확인하기 좋은 장소입니다.";
+  }
+  if (placeType === "복지시설") {
+    return "생활 유권자와 접촉하기 좋은 현장입니다.";
+  }
+  return "지역 현안을 듣고 후보 메시지를 전달하기 좋은 장소입니다.";
 }
 
 export function buildChecklist(item = {}) {
@@ -312,6 +345,29 @@ function getCandidateDistrict(item = {}) {
   );
 }
 
+function getCandidateSource(item = {}) {
+  return item.source || item.candidate_source || item.source_type || "frontend_static_json";
+}
+
+function isFallbackCandidate(item = {}) {
+  return Boolean(item.is_fallback) || FALLBACK_SOURCES.has(getCandidateSource(item));
+}
+
+function getSourcePriority(item = {}) {
+  return SOURCE_PRIORITY[getCandidateSource(item)] ?? 50;
+}
+
+function countBy(items = [], getKey) {
+  return items.reduce((accumulator, item) => {
+    const key = getKey(item);
+    if (!key) {
+      return accumulator;
+    }
+    accumulator[key] = (accumulator[key] || 0) + 1;
+    return accumulator;
+  }, {});
+}
+
 function filterItemsByDistrict(items = [], selectedDistricts) {
   const selected = normalizeDistricts(selectedDistricts);
   if (!selected.length) {
@@ -339,6 +395,10 @@ function buildDistrictDebug(selectedDistricts, beforeCount, afterCount, items, w
   const mismatchCount = selected.length
     ? items.filter((item) => !selected.includes(getCandidateDistrict(item))).length
     : 0;
+  const fallbackCandidateCount = items.filter(isFallbackCandidate).length;
+  const realCandidateCount = items.length - fallbackCandidateCount;
+  const sourceCounts = countBy(items, getCandidateSource);
+  const districtDistribution = countBy(items, getCandidateDistrict);
   return {
     source: meta.source || "frontend_static_json",
     selected_districts: selected,
@@ -348,8 +408,12 @@ function buildDistrictDebug(selectedDistricts, beforeCount, afterCount, items, w
     candidate_count_after_district_filter: afterCount,
     district_filter_applied: Boolean(selected.length),
     district_mismatch_count: mismatchCount,
-    fallback_used: Boolean(meta.fallback_used),
-    fallback_stage: meta.fallback_stage || "strict",
+    real_candidate_count: realCandidateCount,
+    fallback_candidate_count: fallbackCandidateCount,
+    source_counts: sourceCounts,
+    district_distribution: districtDistribution,
+    fallback_used: meta.fallback_used ?? fallbackCandidateCount > 0,
+    fallback_stage: meta.fallback_stage || (fallbackCandidateCount ? "fill_missing_only" : "strict"),
     warnings,
   };
 }
@@ -369,8 +433,9 @@ function routeFallbackSeedToCandidate(seed, index) {
     lng: seed.lng ?? null,
     source: seed.source || "district_fallback_seed",
     candidate_source: seed.source || "district_fallback_seed",
+    is_fallback: true,
     score: Number(seed.score || 1.05) - (index * 0.01),
-    reason: seed.explanation || "선택한 자치구 내 기본 후보입니다.",
+    reason: getNaturalCampaignReason(placeType),
   };
 }
 
@@ -385,6 +450,7 @@ function recommendationFallbackSeedToCandidate(seed, index) {
     district_match: true,
     source: seed.source || "district_fallback_seed",
     candidate_source: seed.source || "district_fallback_seed",
+    is_fallback: true,
     score: Number(seed.score || 1.05) - (index * 0.01),
   };
 }
@@ -455,6 +521,156 @@ function buildStaticRouteShell(request = {}) {
   };
 }
 
+function getCandidateScore(item = {}) {
+  const numeric = Number(item.final_score ?? item.final_variant_score ?? item.score ?? item.baseline_score ?? 0);
+  return Number.isFinite(numeric) ? numeric : 0;
+}
+
+function routeCandidateIdentity(item = {}) {
+  return [
+    String(item.place_name || item.recommended_place_name || item.name || "").replace(/\s+/g, ""),
+    getCandidateDistrict(item),
+    getPlaceTypeLabel(item.place_type || item.recommended_place_type || item.type || ""),
+  ].join("|");
+}
+
+function dedupeRouteCandidates(items = []) {
+  const seen = new Set();
+  return items.filter((item) => {
+    const key = routeCandidateIdentity(item);
+    if (seen.has(key)) {
+      return false;
+    }
+    seen.add(key);
+    return true;
+  });
+}
+
+function interleaveByDistrict(candidates = [], selectedDistricts = [], count = candidates.length) {
+  const selected = normalizeDistricts(selectedDistricts);
+  if (!selected.length) {
+    return candidates.slice(0, count);
+  }
+
+  const grouped = selected.reduce((accumulator, district) => {
+    accumulator[district] = [];
+    return accumulator;
+  }, {});
+  candidates.forEach((candidate) => {
+    const district = getCandidateDistrict(candidate);
+    if (grouped[district]) {
+      grouped[district].push(candidate);
+    }
+  });
+
+  const result = [];
+  while (result.length < count) {
+    let added = false;
+    for (const district of selected) {
+      if (grouped[district]?.length) {
+        result.push(grouped[district].shift());
+        added = true;
+        if (result.length >= count) {
+          break;
+        }
+      }
+    }
+    if (!added) {
+      break;
+    }
+  }
+  return result;
+}
+
+function normalizeStaticRealRouteCandidate(item = {}, index = 0, source = "frontend_static_json") {
+  const district = getCandidateDistrict(item);
+  const placeType = getPlaceTypeLabel(item.place_type || item.recommended_place_type || item.type || item.category);
+  const placeName = item.place_name || item.recommended_place_name || item.name || item.title;
+  if (!district || !placeName) {
+    return null;
+  }
+  const lat = item.lat ?? item.latitude ?? item.map_position?.lat ?? null;
+  const lng = item.lng ?? item.longitude ?? item.map_position?.lng ?? null;
+  const normalizedSource = FALLBACK_SOURCES.has(item.source) || item.candidate_source === "static_fallback"
+    ? source
+    : getCandidateSource({ ...item, source });
+  return {
+    ...item,
+    place_name: placeName,
+    recommended_place_name: placeName,
+    district,
+    district_normalized: district,
+    recommended_district: district,
+    district_match: true,
+    place_type: placeType,
+    recommended_place_type: placeType,
+    address: item.address || item.road_address || `서울특별시 ${district} 일대`,
+    lat,
+    lng,
+    source: normalizedSource,
+    candidate_source: normalizedSource,
+    is_fallback: false,
+    score: getCandidateScore(item) || Number((1.1 - index * 0.01).toFixed(2)),
+    recommendation_reason: item.recommendation_reason || item.reason || getNaturalCampaignReason(placeType),
+    sequence_reason: item.sequence_reason || getNaturalCampaignReason(placeType),
+  };
+}
+
+function collectStaticRealRouteCandidates(request = {}, selectedDistricts = [], sourceGroups = []) {
+  const selected = normalizeDistricts(selectedDistricts);
+  const preferredTypes = new Set((request.preferred_place_types || []).map(getPlaceTypeLabel).filter(Boolean));
+  const candidates = sourceGroups
+    .flatMap(({ items = [], source = "frontend_static_json" }) => (
+      Array.isArray(items)
+        ? items.map((item, index) => normalizeStaticRealRouteCandidate(item, index, source))
+        : []
+    ))
+    .filter(Boolean)
+    .filter((item) => !selected.length || selected.includes(getCandidateDistrict(item)));
+
+  const sorted = candidates.sort((a, b) => (
+    getSourcePriority(a) - getSourcePriority(b)
+      || getCandidateScore(b) - getCandidateScore(a)
+      || String(a.place_name).localeCompare(String(b.place_name), "ko")
+  ));
+  const strict = preferredTypes.size ? sorted.filter((item) => preferredTypes.has(item.place_type)) : sorted;
+  const relaxed = sorted.filter((item) => !strict.includes(item));
+  return dedupeRouteCandidates([...strict, ...relaxed]);
+}
+
+function buildTimedRouteItems(request, candidates, existingItems = []) {
+  const startHour = Number(String(request.start_time || "09:00").split(":")[0]) || 9;
+  return candidates.map((item, index) => {
+    const order = existingItems.length + index + 1;
+    const hour = Math.min(22, startHour + (order - 1) * 2);
+    const startTime = `${String(hour).padStart(2, "0")}:00`;
+    return {
+      ...item,
+      id: item.id || `static-real-${normalizeDistrict(item.district)}-${order}`,
+      order,
+      sequence: order,
+      start_time: item.start_time || item.time || startTime,
+      time: item.time || item.start_time || startTime,
+      district_normalized: normalizeDistrict(item.district),
+      district_match: true,
+      map_position: item.lat != null && item.lng != null ? { lat: item.lat, lng: item.lng } : undefined,
+      recommendation_reason: item.recommendation_reason || getNaturalCampaignReason(item.place_type),
+      sequence_reason: item.sequence_reason || getNaturalCampaignReason(item.place_type),
+    };
+  });
+}
+
+function buildStaticRealRouteFillers(request, selectedDistricts, count, existingItems = [], sourceGroups = []) {
+  if (count <= 0) {
+    return [];
+  }
+  const existingNames = new Set(existingItems.map((item) => item.place_name || item.name || item.recommended_place_name));
+  const candidates = collectStaticRealRouteCandidates(request, selectedDistricts, sourceGroups)
+    .filter((item) => !existingNames.has(item.place_name));
+  const selected = interleaveByDistrict(candidates, selectedDistricts, count);
+  return buildTimedRouteItems(request, selected, existingItems);
+}
+
 function buildStaticRouteFillers(request, selectedDistricts, count, existingItems = []) {
   const selected = normalizeDistricts(selectedDistricts);
   if (!selected.length || count <= 0) {
@@ -467,7 +683,8 @@ function buildStaticRouteFillers(request, selectedDistricts, count, existingItem
     .flatMap((district) => STATIC_DISTRICT_ROUTE_CANDIDATES[district] || [])
     .filter((item) => !existingNames.has(item.place_name));
 
-  const seedFillers = candidates.slice(0, count).map((item, index) => {
+  const seedCandidates = interleaveByDistrict(candidates, selected, count);
+  const seedFillers = seedCandidates.slice(0, count).map((item, index) => {
     const hour = Math.min(22, startHour + (existingItems.length + index) * 2);
     const startTime = `${String(hour).padStart(2, "0")}:00`;
     const order = existingItems.length + index + 1;
@@ -481,7 +698,7 @@ function buildStaticRouteFillers(request, selectedDistricts, count, existingItem
       score: Number((2.8 - index * 0.04).toFixed(2)),
       district_normalized: normalizeDistrict(item.district),
       district_match: true,
-      map_position: { lat: item.lat, lng: item.lng },
+      map_position: item.lat != null && item.lng != null ? { lat: item.lat, lng: item.lng } : undefined,
       recommendation_reason: item.reason,
       sequence_reason: item.reason,
     };
@@ -519,9 +736,10 @@ function buildStaticRouteFillers(request, selectedDistricts, count, existingItem
         lng: null,
         source: "synthetic_district_fallback",
         candidate_source: "synthetic_district_fallback",
+        is_fallback: true,
         score: Number((2.55 - index * 0.03).toFixed(2)),
-        recommendation_reason: "선택한 자치구 내 후보가 부족해 생성한 안전 fallback 후보입니다.",
-        sequence_reason: "선택한 자치구 hard filter를 유지하기 위해 같은 자치구 안에서 생성한 fallback 후보입니다.",
+        recommendation_reason: getNaturalCampaignReason(placeType),
+        sequence_reason: getNaturalCampaignReason(placeType),
       };
     }),
   ].slice(0, count);
@@ -749,10 +967,16 @@ async function getOptimizedFallback(path) {
 async function getRouteFallback(path, body) {
   const url = getRequestUrl(path);
   let data = {};
+  let recommendationData = {};
   try {
     data = await loadStaticData("map_routes.json");
   } catch (error) {
     data = {};
+  }
+  try {
+    recommendationData = await loadStaticData("recommendation_results.json");
+  } catch (error) {
+    recommendationData = {};
   }
 
   if (url.pathname === "/route/options") {
@@ -782,14 +1006,21 @@ async function getRouteFallback(path, body) {
     const requestedVisits = Number(request.num_visits) || route.timeline?.length || 5;
     const requestedDistricts = request.districts || request.district || request.selectedDistricts || request.selected_districts || [];
     const sourceTimeline = route.timeline || [];
-    const districtFilteredTimeline = filterItemsByDistrict(sourceTimeline, requestedDistricts);
-    let timeline = districtFilteredTimeline
-      .slice(0, requestedVisits)
-      .map((item, index) => ({ ...item, order: index + 1 }));
+    const staticRealSourceGroups = [
+      { items: sourceTimeline, source: "frontend_static_json" },
+      { items: recommendationData.optimized_recommendations || [], source: "public_csv" },
+      { items: recommendationData.queries || [], source: "public_csv" },
+    ];
+    const staticRealCandidates = collectStaticRealRouteCandidates(request, requestedDistricts, staticRealSourceGroups);
+    let timeline = buildTimedRouteItems(
+      request,
+      interleaveByDistrict(staticRealCandidates, requestedDistricts, requestedVisits),
+      []
+    );
     const warnings = [];
-    let fallbackUsed = sourceTimeline.length > districtFilteredTimeline.length || timeline.length < requestedVisits;
-    let fallbackStage = timeline.length >= requestedVisits ? "strict" : "relaxed_place_type";
-    let source = sourceTimeline.length ? "frontend_static_json" : "district_fallback_seed";
+    let fallbackUsed = false;
+    let fallbackStage = "all_real_district_candidates";
+    let source = timeline.length ? "frontend_static_json" : "district_fallback_seed";
     if (normalizeDistricts(requestedDistricts).length && timeline.length < requestedVisits) {
       const fillers = buildStaticRouteFillers(request, requestedDistricts, requestedVisits - timeline.length, timeline);
       timeline = [...timeline, ...fillers].slice(0, requestedVisits);
@@ -797,9 +1028,9 @@ async function getRouteFallback(path, body) {
         fallbackUsed = true;
         fallbackStage = fillers.some((item) => item.source === "synthetic_district_fallback")
           ? "synthetic_district_fallback"
-          : "district_fallback_seed";
-        source = fallbackStage;
-        warnings.push("선택한 자치구 내 기본 후보를 사용했습니다.");
+          : (staticRealCandidates.length ? "fill_missing_only" : "district_fallback_seed");
+        source = staticRealCandidates.length ? "frontend_static_json" : fallbackStage;
+        warnings.push("선택한 자치구 내 실제 후보를 우선 사용하고 부족한 일정만 기본 후보로 채웠습니다.");
       }
     }
     timeline = filterItemsByDistrict(timeline, requestedDistricts)
@@ -831,7 +1062,7 @@ async function getRouteFallback(path, body) {
       timeline,
       debug: buildDistrictDebug(
         requestedDistricts,
-        sourceTimeline.length + countStaticRouteCandidatePool(requestedDistricts),
+        staticRealCandidates.length + countStaticRouteCandidatePool(requestedDistricts),
         timeline.length,
         timeline,
         [...new Set(warnings)],

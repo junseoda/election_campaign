@@ -695,6 +695,13 @@ export default function RoutePlannerPage() {
             <section className="routeResultPane">
               <RouteSummary route={route} />
               <RouteWarnings route={route} />
+              {route?.debug ? (
+                <script
+                  id="route-debug-json"
+                  type="application/json"
+                  dangerouslySetInnerHTML={{ __html: JSON.stringify(route.debug).replace(/</g, "\\u003c") }}
+                />
+              ) : null}
               <div className="routeOutputGrid">
                 <KakaoRouteMap
                   stops={routeStops}

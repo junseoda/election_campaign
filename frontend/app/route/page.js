@@ -396,6 +396,21 @@ function RouteSummary({ route }) {
   );
 }
 
+function RouteWarnings({ route }) {
+  const warnings = [...new Set(route?.debug?.warnings || [])].filter(Boolean).slice(0, 3);
+  if (!warnings.length) {
+    return null;
+  }
+
+  return (
+    <div className="routeWarningList" role="status" aria-label="동선 추천 보정 안내">
+      {warnings.map((warning) => (
+        <span key={warning}>{warning}</span>
+      ))}
+    </div>
+  );
+}
+
 function SwapPlaceModal({ item, options, onClose, onSwap }) {
   if (!item) {
     return null;
@@ -670,6 +685,7 @@ export default function RoutePlannerPage() {
 
             <section className="routeResultPane">
               <RouteSummary route={route} />
+              <RouteWarnings route={route} />
               <div className="routeOutputGrid">
                 <KakaoRouteMap
                   stops={routeStops}

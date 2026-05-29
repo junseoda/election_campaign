@@ -1,5 +1,7 @@
 "use client";
 
+import { DISTRICT_FALLBACK_SEEDS } from "./districtFallbackSeeds";
+
 const NAV_ITEMS = [
   { key: "home", label: "홈", href: "/", caption: "운영 홈" },
   { key: "route", label: "동선", href: "/route", caption: "하루 일정" },
@@ -26,6 +28,8 @@ const PLACE_TYPE_LABELS = {
   senior_welfare: "복지시설",
   welfare: "복지시설",
   park: "공원",
+  commercial: "골목상권",
+  public: "정책현장",
   policy_site: "정책현장",
   sports: "체육시설",
 };
@@ -219,6 +223,21 @@ function parseRequestBody(body) {
   return {};
 }
 
+function getRouteItems(payload = {}) {
+  const candidates = [
+    payload.timeline,
+    payload.route,
+    payload.stops,
+    payload.recommendations,
+    payload.items,
+    payload.data?.timeline,
+    payload.data?.route,
+    payload.data?.stops,
+    payload.data?.items,
+  ];
+  return candidates.find(Array.isArray) || [];
+}
+
 const SEOUL_DISTRICTS = [
   "종로구", "중구", "용산구", "성동구", "광진구", "동대문구", "중랑구",
   "성북구", "강북구", "도봉구", "노원구", "은평구", "서대문구", "마포구",
@@ -315,61 +334,74 @@ function filterItemsByDistrict(items = [], selectedDistricts) {
     .filter((item) => item.district_match);
 }
 
-function buildDistrictDebug(selectedDistricts, beforeCount, afterCount, items, warnings = []) {
+function buildDistrictDebug(selectedDistricts, beforeCount, afterCount, items, warnings = [], meta = {}) {
   const selected = normalizeDistricts(selectedDistricts);
   const mismatchCount = selected.length
     ? items.filter((item) => !selected.includes(getCandidateDistrict(item))).length
     : 0;
   return {
+    source: meta.source || "frontend_static_json",
     selected_districts: selected,
+    requested_visit_count: meta.requested_visit_count,
+    returned_count: items.length,
     candidate_count_before_district_filter: beforeCount,
     candidate_count_after_district_filter: afterCount,
     district_filter_applied: Boolean(selected.length),
     district_mismatch_count: mismatchCount,
+    fallback_used: Boolean(meta.fallback_used),
+    fallback_stage: meta.fallback_stage || "strict",
     warnings,
   };
 }
 
-const STATIC_DISTRICT_ROUTE_CANDIDATES = {
-  동대문구: [
-    { place_name: "청량리역 광장", district: "동대문구", place_type: "교통거점", address: "서울 동대문구 왕산로 214", lat: 37.5801, lng: 127.0456, reason: "청량리역 유동 인구와 생활권 민원을 함께 만날 수 있는 교통 거점입니다." },
-    { place_name: "경동시장 입구", district: "동대문구", place_type: "전통시장", address: "서울 동대문구 고산자로36길 3", lat: 37.5795, lng: 127.0398, reason: "상인과 지역 주민 접점이 높은 전통시장 후보입니다." },
-    { place_name: "서울시립동대문노인종합복지관", district: "동대문구", place_type: "복지시설", address: "서울 동대문구 제기로33길 25", lat: 37.5871, lng: 127.0496, reason: "복지와 돌봄 메시지를 현장에서 확인하기 좋은 지점입니다." },
-    { place_name: "장안근린공원", district: "동대문구", place_type: "공원", address: "서울 동대문구 장안동", lat: 37.5699, lng: 127.0712, reason: "생활권 주민과 가족 단위 유권자를 만날 수 있는 공원 후보입니다." },
-    { place_name: "동대문구청 앞 광장", district: "동대문구", place_type: "정책현장", address: "서울 동대문구 천호대로 145", lat: 37.5744, lng: 127.0396, reason: "구정 현안과 생활 민원을 듣기 좋은 정책 현장입니다." },
-    { place_name: "답십리사거리", district: "동대문구", place_type: "교통거점", address: "서울 동대문구 답십리동", lat: 37.5664, lng: 127.0524, reason: "퇴근 시간대 이동 동선 접점이 있는 생활 교통 거점입니다." },
-  ],
-  중구: [
-    { place_name: "남대문시장", district: "중구", place_type: "전통시장", address: "서울 중구 남대문시장4길 21", lat: 37.5592, lng: 126.9777, reason: "상인과 방문객 접점이 큰 중구 대표 전통시장입니다." },
-    { place_name: "평화시장", district: "중구", place_type: "전통시장", address: "서울 중구 청계천로 274", lat: 37.5686, lng: 127.0088, reason: "상권 방문 목적에 적합한 도심 상가 밀집 후보입니다." },
-    { place_name: "약수노인복지관", district: "중구", place_type: "복지시설", address: "서울 중구 다산로", lat: 37.5527, lng: 127.0106, reason: "복지 현장 의견을 듣기 좋은 생활권 복지시설입니다." },
-    { place_name: "서울시청 앞 광장", district: "중구", place_type: "정책현장", address: "서울 중구 세종대로 110", lat: 37.5663, lng: 126.978, reason: "정책 메시지와 도심 유동 인구 접점이 있는 현장입니다." },
-    { place_name: "을지로입구역 일대", district: "중구", place_type: "교통거점", address: "서울 중구 을지로 42", lat: 37.566, lng: 126.9826, reason: "직장인과 도심 방문객을 만날 수 있는 교통 거점입니다." },
-    { place_name: "중부시장", district: "중구", place_type: "전통시장", address: "서울 중구 을지로32길 33", lat: 37.5658, lng: 127.0009, reason: "지역상권 방문과 상인 간담 동선에 적합한 후보입니다." },
-  ],
-};
+function routeFallbackSeedToCandidate(seed, index) {
+  const district = normalizeDistrict(seed.district_normalized || seed.district);
+  const placeType = getPlaceTypeLabel(seed.place_type);
+  return {
+    ...seed,
+    place_name: seed.place_name,
+    district,
+    district_normalized: district,
+    district_match: true,
+    place_type: placeType,
+    address: seed.address || `서울특별시 ${district} 일대`,
+    lat: seed.lat ?? null,
+    lng: seed.lng ?? null,
+    source: seed.source || "district_fallback_seed",
+    candidate_source: seed.source || "district_fallback_seed",
+    score: Number(seed.score || 1.05) - (index * 0.01),
+    reason: seed.explanation || "선택한 자치구 내 기본 후보입니다.",
+  };
+}
 
-const STATIC_DISTRICT_RECOMMENDATION_CANDIDATES = {
-  동대문구: [
-    { recommended_place_name: "청량리역 광장", recommended_district: "동대문구", recommended_place_type: "교통거점", score: 1.52 },
-    { recommended_place_name: "경동시장 입구", recommended_district: "동대문구", recommended_place_type: "전통시장", score: 1.47 },
-    { recommended_place_name: "서울시립동대문노인종합복지관", recommended_district: "동대문구", recommended_place_type: "복지시설", score: 1.43 },
-    { recommended_place_name: "장안근린공원", recommended_district: "동대문구", recommended_place_type: "공원", score: 1.39 },
-    { recommended_place_name: "동대문구청 앞 광장", recommended_district: "동대문구", recommended_place_type: "정책현장", score: 1.35 },
-    { recommended_place_name: "답십리사거리", recommended_district: "동대문구", recommended_place_type: "교통거점", score: 1.31 },
-    { recommended_place_name: "장안동 벚꽃길", recommended_district: "동대문구", recommended_place_type: "공원", score: 1.28 },
-    { recommended_place_name: "동대문구민회관", recommended_district: "동대문구", recommended_place_type: "정책현장", score: 1.24 },
-    { recommended_place_name: "회기역 앞", recommended_district: "동대문구", recommended_place_type: "교통거점", score: 1.21 },
-    { recommended_place_name: "전농동 로터리", recommended_district: "동대문구", recommended_place_type: "골목상권", score: 1.18 },
-  ],
-  중구: [
-    { recommended_place_name: "남대문시장", recommended_district: "중구", recommended_place_type: "전통시장", score: 1.55 },
-    { recommended_place_name: "평화시장", recommended_district: "중구", recommended_place_type: "전통시장", score: 1.5 },
-    { recommended_place_name: "중부시장", recommended_district: "중구", recommended_place_type: "전통시장", score: 1.45 },
-    { recommended_place_name: "을지로입구역 일대", recommended_district: "중구", recommended_place_type: "교통거점", score: 1.4 },
-    { recommended_place_name: "서울시청 앞 광장", recommended_district: "중구", recommended_place_type: "정책현장", score: 1.36 },
-  ],
-};
+function recommendationFallbackSeedToCandidate(seed, index) {
+  const district = normalizeDistrict(seed.district_normalized || seed.district);
+  return {
+    recommended_place_name: seed.place_name,
+    recommended_district: district,
+    recommended_district_normalized: district,
+    recommended_place_type: getPlaceTypeLabel(seed.place_type),
+    district_normalized: district,
+    district_match: true,
+    source: seed.source || "district_fallback_seed",
+    candidate_source: seed.source || "district_fallback_seed",
+    score: Number(seed.score || 1.05) - (index * 0.01),
+  };
+}
+
+const STATIC_DISTRICT_ROUTE_CANDIDATES = Object.fromEntries(
+  SEOUL_DISTRICTS.map((district) => [
+    district,
+    (DISTRICT_FALLBACK_SEEDS[district] || []).map(routeFallbackSeedToCandidate),
+  ])
+);
+
+const STATIC_DISTRICT_RECOMMENDATION_CANDIDATES = Object.fromEntries(
+  SEOUL_DISTRICTS.map((district) => [
+    district,
+    (DISTRICT_FALLBACK_SEEDS[district] || []).map(recommendationFallbackSeedToCandidate),
+  ])
+);
 
 const STATIC_RECOMMENDATION_QUERIES = [
   {
@@ -435,7 +467,7 @@ function buildStaticRouteFillers(request, selectedDistricts, count, existingItem
     .flatMap((district) => STATIC_DISTRICT_ROUTE_CANDIDATES[district] || [])
     .filter((item) => !existingNames.has(item.place_name));
 
-  return candidates.slice(0, count).map((item, index) => {
+  const seedFillers = candidates.slice(0, count).map((item, index) => {
     const hour = Math.min(22, startHour + (existingItems.length + index) * 2);
     const startTime = `${String(hour).padStart(2, "0")}:00`;
     const order = existingItems.length + index + 1;
@@ -454,6 +486,45 @@ function buildStaticRouteFillers(request, selectedDistricts, count, existingItem
       sequence_reason: item.reason,
     };
   });
+
+  if (seedFillers.length >= count) {
+    return seedFillers;
+  }
+
+  const preferredTypes = request.preferred_place_types?.length
+    ? request.preferred_place_types.map(getPlaceTypeLabel)
+    : ["교통거점", "골목상권", "전통시장", "공원", "정책현장"];
+  const syntheticCount = count - seedFillers.length;
+  return [
+    ...seedFillers,
+    ...Array.from({ length: syntheticCount }, (_, index) => {
+      const district = selected[index % selected.length];
+      const order = existingItems.length + seedFillers.length + index + 1;
+      const hour = Math.min(22, startHour + (order - 1) * 2);
+      const startTime = `${String(hour).padStart(2, "0")}:00`;
+      const placeType = preferredTypes[index % preferredTypes.length];
+      return {
+        id: `synthetic-${district}-${order}`,
+        order,
+        sequence: order,
+        start_time: startTime,
+        time: startTime,
+        place_name: `${district} 생활권 유세 거점 ${index + 1}`,
+        district,
+        district_normalized: district,
+        district_match: true,
+        place_type: placeType,
+        address: `서울특별시 ${district} 주요 생활권 일대`,
+        lat: null,
+        lng: null,
+        source: "synthetic_district_fallback",
+        candidate_source: "synthetic_district_fallback",
+        score: Number((2.55 - index * 0.03).toFixed(2)),
+        recommendation_reason: "선택한 자치구 내 후보가 부족해 생성한 안전 fallback 후보입니다.",
+        sequence_reason: "선택한 자치구 hard filter를 유지하기 위해 같은 자치구 안에서 생성한 fallback 후보입니다.",
+      };
+    }),
+  ].slice(0, count);
 }
 
 function countStaticRouteCandidatePool(selectedDistricts) {
@@ -503,10 +574,21 @@ function ensureDistrictSafeRoutePayload(payload = {}, request = {}) {
   const districtFilteredTimeline = filterItemsByDistrict(sourceTimeline, selected);
   let timeline = districtFilteredTimeline.slice(0, requestedVisits);
   const warnings = [...(payload.debug?.warnings || [])];
+  let fallbackUsed = Boolean(payload.debug?.fallback_used);
+  let fallbackStage = payload.debug?.fallback_stage || (timeline.length >= requestedVisits ? "strict" : "relaxed_place_type");
+  let source = payload.debug?.source || "backend_api";
 
   if (timeline.length < requestedVisits) {
     const fillers = buildStaticRouteFillers(request, selected, requestedVisits - timeline.length, timeline);
     timeline = [...timeline, ...fillers].slice(0, requestedVisits);
+    if (fillers.length) {
+      fallbackUsed = true;
+      fallbackStage = fillers.some((item) => item.source === "synthetic_district_fallback")
+        ? "synthetic_district_fallback"
+        : "district_fallback_seed";
+      source = fallbackStage;
+      warnings.push("선택한 자치구 내 기본 후보를 사용했습니다.");
+    }
   }
 
   timeline = filterItemsByDistrict(timeline, selected)
@@ -515,6 +597,9 @@ function ensureDistrictSafeRoutePayload(payload = {}, request = {}) {
 
   if (timeline.length < requestedVisits) {
     warnings.push(`Returned ${timeline.length} recommendations because selected district candidates were insufficient for requested ${requestedVisits} visits.`);
+  }
+  if (timeline.some((item) => item.lat == null || item.lng == null)) {
+    warnings.push("좌표가 없는 후보는 지도에 권역 기준 위치로 표시되며, 타임라인에는 정상 표시됩니다.");
   }
 
   return {
@@ -540,7 +625,13 @@ function ensureDistrictSafeRoutePayload(payload = {}, request = {}) {
       sourceTimeline.length + countStaticRouteCandidatePool(selected),
       timeline.length,
       timeline,
-      warnings
+      [...new Set(warnings)],
+      {
+        source,
+        requested_visit_count: requestedVisits,
+        fallback_used: fallbackUsed,
+        fallback_stage: fallbackStage,
+      }
     ),
   };
 }
@@ -670,7 +761,19 @@ async function getRouteFallback(path, body) {
 
   if (url.pathname === "/route/sample") {
     const defaultRequest = data.route_options?.default_request || STATIC_ROUTE_OPTIONS.default_request;
-    return withStaticMeta(cloneStaticPayload(data.sample_route || buildStaticRouteShell(defaultRequest)));
+    const route = cloneStaticPayload(data.sample_route || buildStaticRouteShell(defaultRequest));
+    const request = route.request || defaultRequest;
+    const sample = ensureDistrictSafeRoutePayload(
+      {
+        ...route,
+        debug: {
+          ...(route.debug || {}),
+          source: "frontend_static_json",
+        },
+      },
+      request
+    );
+    return withStaticMeta(sample);
   }
 
   if (url.pathname === "/route/recommend") {
@@ -684,15 +787,29 @@ async function getRouteFallback(path, body) {
       .slice(0, requestedVisits)
       .map((item, index) => ({ ...item, order: index + 1 }));
     const warnings = [];
+    let fallbackUsed = sourceTimeline.length > districtFilteredTimeline.length || timeline.length < requestedVisits;
+    let fallbackStage = timeline.length >= requestedVisits ? "strict" : "relaxed_place_type";
+    let source = sourceTimeline.length ? "frontend_static_json" : "district_fallback_seed";
     if (normalizeDistricts(requestedDistricts).length && timeline.length < requestedVisits) {
       const fillers = buildStaticRouteFillers(request, requestedDistricts, requestedVisits - timeline.length, timeline);
       timeline = [...timeline, ...fillers].slice(0, requestedVisits);
+      if (fillers.length) {
+        fallbackUsed = true;
+        fallbackStage = fillers.some((item) => item.source === "synthetic_district_fallback")
+          ? "synthetic_district_fallback"
+          : "district_fallback_seed";
+        source = fallbackStage;
+        warnings.push("선택한 자치구 내 기본 후보를 사용했습니다.");
+      }
     }
     timeline = filterItemsByDistrict(timeline, requestedDistricts)
       .slice(0, requestedVisits)
       .map((item, index) => ({ ...item, order: index + 1, sequence: index + 1 }));
     if (normalizeDistricts(requestedDistricts).length && timeline.length < requestedVisits) {
       warnings.push(`Returned ${timeline.length} recommendations because selected district candidates were insufficient for requested ${requestedVisits} visits.`);
+    }
+    if (timeline.some((item) => item.lat == null || item.lng == null)) {
+      warnings.push("좌표가 없는 후보는 지도에 권역 기준 위치로 표시되며, 타임라인에는 정상 표시됩니다.");
     }
 
     return withStaticMeta({
@@ -717,7 +834,13 @@ async function getRouteFallback(path, body) {
         sourceTimeline.length + countStaticRouteCandidatePool(requestedDistricts),
         timeline.length,
         timeline,
-        warnings
+        [...new Set(warnings)],
+        {
+          source,
+          requested_visit_count: requestedVisits,
+          fallback_used: fallbackUsed,
+          fallback_stage: fallbackStage,
+        }
       ),
       insights: [
         "현재 정적 데모 모드로 실행 중입니다.",
@@ -1165,7 +1288,7 @@ export function RouteTimeline({
   showScoreDetails = true,
 }) {
   if (!items.length) {
-    return <EmptyState title="추천 동선이 없습니다" message="조건을 입력하고 동선 추천을 실행해주세요." />;
+    return <EmptyState title="추천 동선이 없습니다" message="선택한 자치구의 기본 후보까지 확인했지만 표시할 일정이 없습니다." />;
   }
 
   return (

@@ -21,6 +21,7 @@ try:
         normalize_districts,
         validate_recommendation_districts,
     )
+    from backend.services.district_fallbacks import DISTRICT_FALLBACK_SEEDS
 except ModuleNotFoundError:
     from district_utils import (  # type: ignore
         SEOUL_DISTRICT_LIST as CANONICAL_SEOUL_DISTRICTS,
@@ -32,6 +33,7 @@ except ModuleNotFoundError:
         normalize_districts,
         validate_recommendation_districts,
     )
+    from services.district_fallbacks import DISTRICT_FALLBACK_SEEDS  # type: ignore
 
 
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
@@ -99,9 +101,43 @@ ADJACENT_DISTRICTS = {
 PLACE_TYPE_LABELS = {
     "market": "전통시장",
     "subway": "교통거점",
+    "station": "교통거점",
     "park": "공원",
     "senior_friendly": "복지시설",
     "senior": "복지시설",
+    "welfare": "복지시설",
+    "commercial": "골목상권",
+    "public": "정책현장",
+    "policy_site": "정책현장",
+}
+
+DISTRICT_COLUMN_CANDIDATES = (
+    "district_normalized",
+    "recommended_district",
+    "district",
+    "district_name",
+    "region",
+    "자치구",
+    "시군구",
+    "SIG_KOR_NM",
+)
+
+ROUTE_FALLBACK_STAGES = (
+    "strict",
+    "relaxed_place_type",
+    "relaxed_target_purpose",
+    "all_district_candidates",
+    "district_fallback_seed",
+    "synthetic_district_fallback",
+)
+
+ROUTE_STAGE_BONUS = {
+    "strict": 0.16,
+    "relaxed_place_type": 0.08,
+    "relaxed_target_purpose": 0.04,
+    "all_district_candidates": 0.0,
+    "district_fallback_seed": -0.04,
+    "synthetic_district_fallback": -0.08,
 }
 
 TARGET_GROUPS = ["직장인", "청년", "상인", "노년층", "가족/어린이", "지역주민"]
@@ -295,6 +331,478 @@ def _stable_mock_position(name: str, order: int) -> dict[str, float | None]:
     }
 
 
+def _processed_data_path(file_name: str) -> Path | None:
+    for root in (BACKEND_ROOT, REPOSITORY_ROOT):
+        path = root / "data" / "processed" / file_name
+        if path.exists():
+            return path
+    return None
+
+
+def _optional_float(value: Any) -> float | None:
+    try:
+        numeric = float(value)
+    except (TypeError, ValueError):
+        return None
+    if pd.isna(numeric):
+        return None
+    return numeric
+
+
+def _normalized_preferred_place_types(values: list[str]) -> set[str]:
+    return {_normalize_place_type(value) for value in values or [] if _clean_text(value)}
+
+
+def _score_from_series(series: pd.Series, base: float = 0.82, spread: float = 0.35) -> pd.Series:
+    numeric = pd.to_numeric(series, errors="coerce").fillna(0.0).clip(lower=0.0)
+    max_value = float(numeric.max()) if len(numeric) else 0.0
+    if max_value <= 0:
+        return pd.Series([base] * len(numeric), index=numeric.index, dtype=float)
+    return base + (spread * (numeric / max_value))
+
+
+def _candidate_dataframe(records: list[dict[str, Any]]) -> pd.DataFrame:
+    columns = [
+        "recommended_place_name",
+        "recommended_district",
+        "district_normalized",
+        "recommended_place_type",
+        "address",
+        "lat",
+        "lng",
+        "latitude",
+        "longitude",
+        "score",
+        "candidate_score",
+        "candidate_source",
+        "source",
+        "district_match",
+        "explanation",
+    ]
+    if not records:
+        return pd.DataFrame(columns=columns)
+    frame = pd.DataFrame(records)
+    for column in columns:
+        if column not in frame.columns:
+            frame[column] = None
+    return frame[columns]
+
+
+def _load_subway_candidates() -> pd.DataFrame:
+    path = _processed_data_path("cleaned_subway.csv")
+    if not path:
+        return _candidate_dataframe([])
+    try:
+        from backend.scripts.recommender import infer_subway_district_name
+    except ModuleNotFoundError:
+        try:
+            from scripts.recommender import infer_subway_district_name  # type: ignore
+        except ModuleNotFoundError:
+            return _candidate_dataframe([])
+
+    dataframe = pd.read_csv(path, encoding="utf-8-sig")
+    if dataframe.empty:
+        return _candidate_dataframe([])
+    dataframe["use_month"] = pd.to_numeric(dataframe.get("use_month"), errors="coerce")
+    latest_month = dataframe["use_month"].max()
+    dataframe = dataframe[dataframe["use_month"] == latest_month].copy()
+    dataframe["station_name"] = dataframe["station_name"].fillna("").astype(str).str.strip()
+    dataframe = dataframe[dataframe["station_name"] != ""].copy()
+    dataframe["recommended_district"] = dataframe["station_name"].apply(infer_subway_district_name)
+    dataframe = dataframe[dataframe["recommended_district"].fillna("") != ""].copy()
+    dataframe["flow_score"] = (
+        pd.to_numeric(dataframe.get("morning_total_in"), errors="coerce").fillna(0.0)
+        + pd.to_numeric(dataframe.get("afternoon_total_in"), errors="coerce").fillna(0.0)
+    )
+    dataframe["candidate_score"] = _score_from_series(dataframe["flow_score"], base=0.92, spread=0.35)
+
+    records = []
+    for _, row in dataframe.drop_duplicates(subset=["station_name"]).iterrows():
+        station_name = _clean_text(row.get("station_name"))
+        place_name = station_name if station_name.endswith("역") else f"{station_name}역 일대"
+        district = normalize_district(row.get("recommended_district")) or _clean_text(row.get("recommended_district"))
+        records.append(
+            {
+                "recommended_place_name": place_name,
+                "recommended_district": district,
+                "district_normalized": district,
+                "recommended_place_type": "교통거점",
+                "address": f"서울특별시 {district} {station_name}역 일대" if district else "주소 확인 필요",
+                "score": float(row.get("candidate_score", 0.0)),
+                "candidate_score": float(row.get("candidate_score", 0.0)),
+                "candidate_source": "public_subway",
+                "source": "public_subway",
+            }
+        )
+    return _candidate_dataframe(records)
+
+
+def _load_market_candidates() -> pd.DataFrame:
+    path = _processed_data_path("cleaned_market.csv")
+    if not path:
+        return _candidate_dataframe([])
+    dataframe = pd.read_csv(path, encoding="utf-8-sig")
+    if dataframe.empty:
+        return _candidate_dataframe([])
+    dataframe["market_name"] = dataframe["market_name"].fillna("").astype(str).str.strip()
+    dataframe["district_name"] = dataframe["district_name"].fillna("").astype(str).str.strip()
+    dataframe["market_address"] = dataframe["market_address"].fillna("").astype(str).str.strip()
+    dataframe = dataframe[(dataframe["market_name"] != "") & (dataframe["district_name"] != "")].copy()
+    score_base = (
+        pd.to_numeric(dataframe.get("store_count"), errors="coerce").fillna(0.0)
+        + pd.to_numeric(dataframe.get("floor_area"), errors="coerce").fillna(0.0).clip(lower=0.0) / 100.0
+    )
+    dataframe["candidate_score"] = _score_from_series(score_base, base=0.9, spread=0.3)
+    records = []
+    for _, row in dataframe.iterrows():
+        district = normalize_district(row.get("district_name")) or _clean_text(row.get("district_name"))
+        records.append(
+            {
+                "recommended_place_name": row.get("market_name"),
+                "recommended_district": district,
+                "district_normalized": district,
+                "recommended_place_type": "전통시장",
+                "address": row.get("market_address") or f"서울특별시 {district} 일대",
+                "score": float(row.get("candidate_score", 0.0)),
+                "candidate_score": float(row.get("candidate_score", 0.0)),
+                "candidate_source": "public_market",
+                "source": "public_market",
+            }
+        )
+    return _candidate_dataframe(records)
+
+
+def _load_park_candidates() -> pd.DataFrame:
+    path = _processed_data_path("cleaned_parks.csv")
+    if not path:
+        return _candidate_dataframe([])
+    dataframe = pd.read_csv(path, encoding="utf-8-sig")
+    if dataframe.empty:
+        return _candidate_dataframe([])
+    dataframe["park_name"] = dataframe["park_name"].fillna("").astype(str).str.strip()
+    dataframe["region"] = dataframe["region"].fillna("").astype(str).str.strip()
+    dataframe = dataframe[(dataframe["park_name"] != "") & (dataframe["region"] != "")].copy()
+    dataframe["candidate_score"] = _score_from_series(
+        pd.to_numeric(dataframe.get("area_sqm"), errors="coerce").fillna(0.0),
+        base=0.86,
+        spread=0.28,
+    )
+    records = []
+    for _, row in dataframe.iterrows():
+        district = normalize_district(row.get("region")) or _clean_text(row.get("region"))
+        records.append(
+            {
+                "recommended_place_name": row.get("park_name"),
+                "recommended_district": district,
+                "district_normalized": district,
+                "recommended_place_type": "공원",
+                "address": row.get("park_address") or f"서울특별시 {district} 일대",
+                "lat": _optional_float(row.get("latitude")),
+                "lng": _optional_float(row.get("longitude")),
+                "latitude": _optional_float(row.get("latitude")),
+                "longitude": _optional_float(row.get("longitude")),
+                "score": float(row.get("candidate_score", 0.0)),
+                "candidate_score": float(row.get("candidate_score", 0.0)),
+                "candidate_source": "public_park",
+                "source": "public_park",
+            }
+        )
+    return _candidate_dataframe(records)
+
+
+def _load_welfare_candidates() -> pd.DataFrame:
+    path = _processed_data_path("cleaned_senior.csv")
+    if not path:
+        return _candidate_dataframe([])
+    dataframe = pd.read_csv(path, encoding="utf-8-sig")
+    if dataframe.empty:
+        return _candidate_dataframe([])
+    dataframe["facility_name"] = dataframe["facility_name"].fillna("").astype(str).str.strip()
+    dataframe["district_name"] = dataframe["district_name"].fillna("").astype(str).str.strip()
+    dataframe["facility_address"] = dataframe["facility_address"].fillna("").astype(str).str.strip()
+    dataframe = dataframe[(dataframe["facility_name"] != "") & (dataframe["district_name"] != "")].copy()
+    dataframe["candidate_score"] = 0.88
+    records = []
+    for _, row in dataframe.iterrows():
+        district = normalize_district(row.get("district_name")) or _clean_text(row.get("district_name"))
+        records.append(
+            {
+                "recommended_place_name": row.get("facility_name"),
+                "recommended_district": district,
+                "district_normalized": district,
+                "recommended_place_type": "복지시설",
+                "address": row.get("facility_address") or f"서울특별시 {district} 일대",
+                "score": float(row.get("candidate_score", 0.0)),
+                "candidate_score": float(row.get("candidate_score", 0.0)),
+                "candidate_source": "public_welfare",
+                "source": "public_welfare",
+            }
+        )
+    return _candidate_dataframe(records)
+
+
+def _load_commercial_candidates() -> pd.DataFrame:
+    path = _processed_data_path("cleaned_commercial_flow.csv")
+    if not path:
+        return _candidate_dataframe([])
+    dataframe = pd.read_csv(path, encoding="utf-8-sig")
+    if dataframe.empty:
+        return _candidate_dataframe([])
+    dataframe["commercial_name"] = dataframe["commercial_name"].fillna("").astype(str).str.strip()
+    dataframe["recommended_district"] = dataframe["commercial_name"].apply(_extract_district)
+    dataframe = dataframe[(dataframe["commercial_name"] != "") & (dataframe["recommended_district"] != "")].copy()
+    dataframe["candidate_score"] = _score_from_series(
+        pd.to_numeric(dataframe.get("total_flow"), errors="coerce").fillna(0.0),
+        base=0.88,
+        spread=0.32,
+    )
+    records = []
+    for _, row in dataframe.iterrows():
+        district = normalize_district(row.get("recommended_district")) or _clean_text(row.get("recommended_district"))
+        records.append(
+            {
+                "recommended_place_name": f"{row.get('commercial_name')} 일대",
+                "recommended_district": district,
+                "district_normalized": district,
+                "recommended_place_type": "골목상권",
+                "address": f"서울특별시 {district} {row.get('commercial_name')} 일대",
+                "score": float(row.get("candidate_score", 0.0)),
+                "candidate_score": float(row.get("candidate_score", 0.0)),
+                "candidate_source": "public_commercial",
+                "source": "public_commercial",
+            }
+        )
+    return _candidate_dataframe(records)
+
+
+def _load_public_candidate_pool() -> pd.DataFrame:
+    frames = [
+        _load_subway_candidates(),
+        _load_market_candidates(),
+        _load_park_candidates(),
+        _load_welfare_candidates(),
+        _load_commercial_candidates(),
+    ]
+    frames = [frame for frame in frames if not frame.empty]
+    if not frames:
+        return _candidate_dataframe([])
+    records: list[dict[str, Any]] = []
+    for frame in frames:
+        records.extend(frame.to_dict("records"))
+    return _candidate_dataframe(records)
+
+
+def _build_seed_candidate(seed: dict[str, Any], stage: str = "district_fallback_seed", order: int = 0) -> dict[str, Any]:
+    district = normalize_district(seed.get("district_normalized") or seed.get("district")) or _clean_text(seed.get("district"))
+    place_type = _normalize_place_type(seed.get("place_type"))
+    score = float(seed.get("score") or 1.05)
+    return {
+        "recommended_place_name": _clean_text(seed.get("place_name")) or f"{district} 유세 거점",
+        "recommended_district": district,
+        "district_normalized": district,
+        "recommended_place_type": place_type,
+        "address": _clean_text(seed.get("address")) or f"서울특별시 {district} 일대",
+        "lat": _optional_float(seed.get("lat")),
+        "lng": _optional_float(seed.get("lng")),
+        "latitude": _optional_float(seed.get("lat")),
+        "longitude": _optional_float(seed.get("lng")),
+        "score": score,
+        "candidate_score": score - (order * 0.01),
+        "candidate_source": seed.get("source") or stage,
+        "source": seed.get("source") or stage,
+        "district_match": True,
+        "explanation": seed.get("explanation") or "선택한 자치구 내 기본 fallback 후보입니다.",
+        "_fallback_stage": stage,
+    }
+
+
+def _build_district_synthetic_fallback(
+    selected_districts: list[str],
+    existing_candidates: list[dict[str, Any]],
+    needed: int,
+    preferred_place_types: list[str],
+) -> list[dict[str, Any]]:
+    if needed <= 0 or not selected_districts:
+        return []
+
+    existing_names = {_clean_text(candidate.get("recommended_place_name")) for candidate in existing_candidates}
+    preferred = list(_normalized_preferred_place_types(preferred_place_types))
+    type_cycle = preferred or ["교통거점", "골목상권", "전통시장", "공원", "정책현장"]
+    synthetic: list[dict[str, Any]] = []
+    sequence = 1
+    while len(synthetic) < needed:
+        district = selected_districts[(sequence - 1) % len(selected_districts)]
+        place_name = f"{district} 생활권 유세 거점 {sequence}"
+        if place_name in existing_names:
+            sequence += 1
+            continue
+        place_type = type_cycle[(sequence - 1) % len(type_cycle)]
+        synthetic.append(
+            {
+                "recommended_place_name": place_name,
+                "recommended_district": district,
+                "district_normalized": district,
+                "recommended_place_type": place_type,
+                "address": f"서울특별시 {district} 주요 생활권 일대",
+                "lat": None,
+                "lng": None,
+                "latitude": None,
+                "longitude": None,
+                "score": 0.98,
+                "candidate_score": 0.98 - (sequence * 0.01),
+                "candidate_source": "synthetic_district_fallback",
+                "source": "synthetic_district_fallback",
+                "district_match": True,
+                "explanation": "선택한 자치구 내 후보가 부족해 생성한 안전 fallback 후보입니다.",
+                "_fallback_stage": "synthetic_district_fallback",
+            }
+        )
+        sequence += 1
+    return synthetic
+
+
+def _candidate_sort_key(candidate: dict[str, Any]) -> tuple[float, str]:
+    return (
+        float(candidate.get("candidate_score") or candidate.get("score") or 0.0),
+        _clean_text(candidate.get("recommended_place_name")),
+    )
+
+
+def _candidate_identity(candidate: dict[str, Any]) -> tuple[str, str, str]:
+    return (
+        re.sub(r"\s+", "", _clean_text(candidate.get("recommended_place_name"))),
+        normalize_district(candidate.get("district_normalized") or candidate.get("recommended_district")) or "",
+        _normalize_place_type(candidate.get("recommended_place_type")),
+    )
+
+
+def _filter_route_candidates(
+    candidates: pd.DataFrame,
+    selected_districts: list[str],
+    place_types: set[str] | None = None,
+) -> list[dict[str, Any]]:
+    if candidates.empty:
+        return []
+
+    filtered = filter_dataframe_by_district(candidates, selected_districts, DISTRICT_COLUMN_CANDIDATES)
+    if place_types:
+        filtered = filtered[
+            filtered["recommended_place_type"].apply(_normalize_place_type).isin(place_types)
+        ].copy()
+    if filtered.empty:
+        return []
+    records = filtered.to_dict("records")
+    return sorted(records, key=_candidate_sort_key, reverse=True)
+
+
+def _dedupe_candidates_preserve_order(stages: list[tuple[str, list[dict[str, Any]]]]) -> tuple[list[dict[str, Any]], str]:
+    merged: list[dict[str, Any]] = []
+    seen: set[tuple[str, str, str]] = set()
+    stage_reaching_count = ""
+    for stage, candidates in stages:
+        for candidate in candidates:
+            candidate = dict(candidate)
+            candidate["_fallback_stage"] = candidate.get("_fallback_stage") or stage
+            key = _candidate_identity(candidate)
+            if key in seen:
+                continue
+            seen.add(key)
+            merged.append(candidate)
+            stage_reaching_count = stage
+    return merged, stage_reaching_count
+
+
+def generate_district_safe_route_candidates(
+    all_candidates: pd.DataFrame,
+    selected_districts: list[str],
+    preferred_place_types: list[str],
+    visit_count: int,
+) -> tuple[pd.DataFrame, dict[str, Any]]:
+    selected = normalize_districts(selected_districts)
+    preferred_types = _normalized_preferred_place_types(preferred_place_types)
+    requested_count = max(1, int(visit_count or 5))
+
+    strict = _filter_route_candidates(all_candidates, selected, preferred_types or None)
+    relaxed_place_type = _filter_route_candidates(all_candidates, selected, None)
+    relaxed_target_purpose = _filter_route_candidates(all_candidates, selected, None)
+    all_district = _filter_route_candidates(all_candidates, selected, None)
+
+    stages = [
+        ("strict", strict),
+        ("relaxed_place_type", relaxed_place_type),
+        ("relaxed_target_purpose", relaxed_target_purpose),
+        ("all_district_candidates", all_district),
+    ]
+
+    merged: list[dict[str, Any]] = []
+    seen: set[tuple[str, str, str]] = set()
+    fallback_stage = "strict"
+    reached_requested = False
+    stage_counts: dict[str, int] = {}
+    for stage, candidates in stages:
+        added = 0
+        for candidate in candidates:
+            candidate = dict(candidate)
+            candidate["_fallback_stage"] = stage
+            key = _candidate_identity(candidate)
+            if key in seen:
+                continue
+            seen.add(key)
+            merged.append(candidate)
+            added += 1
+        stage_counts[stage] = len(candidates)
+        if len(merged) >= requested_count and not reached_requested:
+            fallback_stage = stage
+            reached_requested = True
+
+    if len(merged) < requested_count:
+        seed_candidates: list[dict[str, Any]] = []
+        for district in selected:
+            for index, seed_item in enumerate(DISTRICT_FALLBACK_SEEDS.get(district, [])):
+                seed_candidates.append(_build_seed_candidate(seed_item, "district_fallback_seed", index))
+        for candidate in seed_candidates:
+            key = _candidate_identity(candidate)
+            if key in seen:
+                continue
+            seen.add(key)
+            merged.append(candidate)
+        stage_counts["district_fallback_seed"] = len(seed_candidates)
+        if len(merged) >= requested_count:
+            fallback_stage = "district_fallback_seed"
+            reached_requested = True
+
+    if len(merged) < requested_count:
+        synthetic = _build_district_synthetic_fallback(
+            selected,
+            merged,
+            requested_count - len(merged),
+            preferred_place_types,
+        )
+        merged.extend(synthetic)
+        stage_counts["synthetic_district_fallback"] = len(synthetic)
+        fallback_stage = "synthetic_district_fallback"
+
+    validated, validation_warnings = validate_recommendation_districts(merged, selected)
+    candidate_frame = _candidate_dataframe(validated)
+    if "_fallback_stage" not in candidate_frame.columns:
+        candidate_frame["_fallback_stage"] = [candidate.get("_fallback_stage", "strict") for candidate in validated]
+
+    debug = {
+        "selected_districts": selected,
+        "requested_visit_count": requested_count,
+        "returned_count": min(len(candidate_frame), requested_count),
+        "candidate_count_before_district_filter": int(len(all_candidates)),
+        "candidate_count_after_district_filter": int(len(candidate_frame)),
+        "district_filter_applied": bool(selected),
+        "district_mismatch_count": count_district_mismatches(validated, selected),
+        "fallback_used": fallback_stage != "strict",
+        "fallback_stage": fallback_stage,
+        "stage_counts": stage_counts,
+        "warnings": validation_warnings,
+    }
+    return candidate_frame.reset_index(drop=True), debug
+
+
 def _district_relation(previous_district: str, current_district: str) -> str:
     previous_district = normalize_district(previous_district) or _clean_text(previous_district)
     current_district = normalize_district(current_district) or _clean_text(current_district)
@@ -389,22 +897,34 @@ def _district_fit(candidate_district: str, preferred_districts: list[str]) -> fl
 
 @lru_cache(maxsize=1)
 def _load_candidate_pool() -> pd.DataFrame:
-    optimized = _read_csv(OPTIMIZED_RECOMMENDATIONS_PATH)
-    raw = _read_csv(RAW_BASELINE_PATH)
-
     frames = []
+    try:
+        optimized = _read_csv(OPTIMIZED_RECOMMENDATIONS_PATH)
+    except FileNotFoundError:
+        optimized = pd.DataFrame()
+    try:
+        raw = _read_csv(RAW_BASELINE_PATH)
+    except FileNotFoundError:
+        raw = pd.DataFrame()
+
     if not optimized.empty:
         optimized_candidates = optimized.copy()
         optimized_candidates["candidate_score"] = pd.to_numeric(
             optimized_candidates.get("score"),
             errors="coerce",
         ).fillna(0.0)
+        optimized_candidates["source"] = "backend_api"
+        if "candidate_source" not in optimized_candidates.columns:
+            optimized_candidates["candidate_source"] = "optimized_recommendations"
         frames.append(optimized_candidates)
 
     if not raw.empty:
         raw_candidates = raw.copy()
         raw_candidates["score"] = pd.to_numeric(raw_candidates.get("baseline_score"), errors="coerce").fillna(0.0)
         raw_candidates["candidate_score"] = raw_candidates["score"]
+        raw_candidates["source"] = "backend_api"
+        if "candidate_source" not in raw_candidates.columns:
+            raw_candidates["candidate_source"] = "raw_baseline"
         for column in [
             "rank",
             "district_bonus",
@@ -419,20 +939,30 @@ def _load_candidate_pool() -> pd.DataFrame:
                 raw_candidates[column] = 0.0
         frames.append(raw_candidates)
 
+    public_candidates = _load_public_candidate_pool()
+    if not public_candidates.empty:
+        frames.append(public_candidates)
+
     if not frames:
-        raise ValueError("route candidate pool is empty")
+        return _candidate_dataframe([])
 
     candidates = pd.concat(frames, ignore_index=True, sort=False)
+    for column in ["recommended_place_name", "recommended_district", "recommended_place_type", "address"]:
+        if column not in candidates.columns:
+            candidates[column] = ""
     candidates["recommended_place_name"] = candidates["recommended_place_name"].fillna("").astype(str).str.strip()
     candidates = candidates[candidates["recommended_place_name"] != ""].copy()
     candidates["recommended_district"] = candidates["recommended_district"].apply(_clean_text)
     candidates["district_normalized"] = get_dataframe_district_series(
         candidates,
-        ("district_normalized", "recommended_district", "district", "district_name", "자치구", "시군구", "SIG_KOR_NM"),
+        DISTRICT_COLUMN_CANDIDATES,
     )
     candidates["recommended_district"] = candidates["district_normalized"].fillna(candidates["recommended_district"])
     candidates["recommended_place_type"] = candidates["recommended_place_type"].apply(_normalize_place_type)
     candidates["candidate_score"] = pd.to_numeric(candidates["candidate_score"], errors="coerce").fillna(0.0)
+    candidates["score"] = pd.to_numeric(candidates.get("score"), errors="coerce").fillna(candidates["candidate_score"])
+    candidates["source"] = candidates.get("source", "backend_api").fillna("backend_api").astype(str)
+    candidates["candidate_source"] = candidates.get("candidate_source", candidates["source"]).fillna(candidates["source"]).astype(str)
 
     sort_columns = ["candidate_score", "recommended_place_name"]
     candidates = candidates.sort_values(sort_columns, ascending=[False, True])
@@ -581,7 +1111,7 @@ def _build_route(request: RouteRequestData) -> dict[str, Any]:
     )
     start_district = normalize_district(start_district) or start_district
 
-    preferred_place_types = set(request.preferred_place_types or [])
+    preferred_place_types = _normalized_preferred_place_types(request.preferred_place_types)
     selected_names: set[str] = set()
     selected_types: set[str] = set()
     selected_districts: set[str] = set()
@@ -591,18 +1121,20 @@ def _build_route(request: RouteRequestData) -> dict[str, Any]:
     timeline = []
     warnings: list[str] = []
 
-    candidate_count_before_district_filter = int(len(candidates))
-    filtered = filter_dataframe_by_district(
+    filtered, candidate_debug = generate_district_safe_route_candidates(
         candidates,
         selected_request_districts,
-        ("district_normalized", "recommended_district", "district", "district_name", "자치구", "시군구", "SIG_KOR_NM"),
+        request.preferred_place_types,
+        request.num_visits,
     )
-    candidate_count_after_district_filter = int(len(filtered))
-    if selected_request_districts and candidate_count_after_district_filter == 0:
-        warnings.append(
-            "No candidates found inside selected districts: "
-            + ", ".join(selected_request_districts)
-        )
+    warnings.extend(candidate_debug.get("warnings", []))
+    if selected_request_districts and candidate_debug.get("fallback_used"):
+        if candidate_debug.get("fallback_stage") == "district_fallback_seed":
+            warnings.append("선택한 자치구 내 기본 후보를 사용했습니다.")
+        elif candidate_debug.get("fallback_stage") == "synthetic_district_fallback":
+            warnings.append("선택한 자치구 내 기본 후보도 부족하여 안전 fallback 후보를 생성했습니다.")
+        else:
+            warnings.append("선택한 자치구 내 후보가 부족하여 일부 조건을 완화했습니다.")
 
     for order, time_value in enumerate(time_slots, start=1):
         scored_rows = []
@@ -638,6 +1170,8 @@ def _build_route(request: RouteRequestData) -> dict[str, Any]:
                 else 0.0
             )
             travel_penalty, travel_minutes = _travel_penalty_and_minutes(previous_district, district)
+            fallback_stage = _clean_text(candidate.get("_fallback_stage")) or "strict"
+            stage_bonus = ROUTE_STAGE_BONUS.get(fallback_stage, 0.0)
             route_score = (
                 optimized_place_score
                 + time_score
@@ -647,6 +1181,7 @@ def _build_route(request: RouteRequestData) -> dict[str, Any]:
                 + diversity_score
                 + duplicate_penalty
                 + travel_penalty
+                + stage_bonus
             )
             scored_rows.append(
                 {
@@ -660,6 +1195,7 @@ def _build_route(request: RouteRequestData) -> dict[str, Any]:
                     "diversity_bonus": round(diversity_score, 4),
                     "duplicate_visit_penalty": duplicate_penalty,
                     "travel_distance_penalty": travel_penalty,
+                    "stage_bonus": stage_bonus,
                     "travel_minutes": travel_minutes,
                 }
             )
@@ -694,7 +1230,13 @@ def _build_route(request: RouteRequestData) -> dict[str, Any]:
             "diversity_bonus": round(best["diversity_bonus"], 4),
             "duplicate_visit_penalty": best["duplicate_visit_penalty"],
             "travel_distance_penalty": best["travel_distance_penalty"],
+            "stage_bonus": best["stage_bonus"],
         }
+        lat = _optional_float(candidate.get("lat")) or _optional_float(candidate.get("latitude"))
+        lng = _optional_float(candidate.get("lng")) or _optional_float(candidate.get("longitude"))
+        map_position = {"lat": lat, "lng": lng} if lat is not None and lng is not None else _stable_mock_position(place_name, order)
+        candidate_source = _clean_text(candidate.get("candidate_source")) or _clean_text(candidate.get("source")) or "backend_api"
+        fallback_stage = _clean_text(candidate.get("_fallback_stage")) or "strict"
         timeline.append(
             {
                 "order": order,
@@ -705,7 +1247,11 @@ def _build_route(request: RouteRequestData) -> dict[str, Any]:
                 "district_match": district in selected_request_district_set if selected_request_district_set else True,
                 "place_type": place_type,
                 "address": _normalize_address(candidate.get("address")),
-                "candidate_source": _clean_text(candidate.get("candidate_source")),
+                "candidate_source": candidate_source,
+                "source": candidate_source,
+                "fallback_stage": fallback_stage,
+                "lat": lat,
+                "lng": lng,
                 "estimated_travel_time_from_previous": f"{travel_minutes}분",
                 "score": round(best["route_score"], 4),
                 "score_breakdown": score_breakdown,
@@ -725,7 +1271,7 @@ def _build_route(request: RouteRequestData) -> dict[str, Any]:
                     best["duplicate_visit_penalty"],
                     travel_minutes,
                 ),
-                "map_position": _stable_mock_position(place_name, order),
+                "map_position": map_position,
             }
         )
         previous_district = district
@@ -733,6 +1279,8 @@ def _build_route(request: RouteRequestData) -> dict[str, Any]:
     district_removed_count = count_district_mismatches(timeline, selected_request_districts)
     timeline, validation_warnings = validate_recommendation_districts(timeline, selected_request_districts)
     warnings.extend(validation_warnings)
+    if timeline and any(item.get("lat") is None or item.get("lng") is None for item in timeline):
+        warnings.append("좌표가 없는 후보는 지도에 권역 기준 위치로 표시되며, 타임라인에는 정상 표시됩니다.")
     if len(timeline) < request.num_visits:
         warnings.append(
             "Returned "
@@ -741,6 +1289,7 @@ def _build_route(request: RouteRequestData) -> dict[str, Any]:
             + str(request.num_visits)
             + " visits."
         )
+    warnings = list(dict.fromkeys(warnings))
     district_mismatch_count = count_district_mismatches(timeline, selected_request_districts)
 
     total_minutes = _parse_minutes(request.end_time) - _parse_minutes(request.start_time)
@@ -771,12 +1320,19 @@ def _build_route(request: RouteRequestData) -> dict[str, Any]:
         "timeline": timeline,
         "insights": insights,
         "debug": {
+            "source": "backend_api",
             "selected_districts": selected_request_districts,
-            "candidate_count_before_district_filter": candidate_count_before_district_filter,
-            "candidate_count_after_district_filter": candidate_count_after_district_filter,
+            "requested_visit_count": request.num_visits,
+            "returned_count": len(timeline),
+            "candidate_count_before_district_filter": candidate_debug.get("candidate_count_before_district_filter", 0),
+            "candidate_count_after_district_filter": candidate_debug.get("candidate_count_after_district_filter", 0),
             "district_filter_applied": bool(selected_request_districts),
             "district_mismatch_count": district_mismatch_count,
             "district_removed_count": district_removed_count,
+            "fallback_used": bool(candidate_debug.get("fallback_used")),
+            "fallback_stage": candidate_debug.get("fallback_stage", "strict"),
+            "stage_counts": candidate_debug.get("stage_counts", {}),
+            "candidate_sources": sorted({item.get("source") for item in timeline if item.get("source")}),
             "warnings": warnings,
         },
         "map": {

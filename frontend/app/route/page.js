@@ -9,6 +9,7 @@ import {
   HeroHeader,
   LoadingState,
   MetricCard,
+  RouteExplainabilityPanel,
   RouteTimeline,
   Section,
   Tag,
@@ -22,6 +23,17 @@ import {
   getTimeRange,
   postJson,
 } from "../components/camp/CampUI";
+import {
+  buildNoCoordinateItemsFromTimeline,
+  buildRouteMarkersFromTimeline,
+  enrichRouteTimelineCoordinates,
+  getCoordinateDebugSummary,
+  getCoordinateStatusMessage,
+  getCoordinateStatusDetail,
+  getCoordinateStatusLabel,
+  isMarkerEligible,
+  normalizePlaceName,
+} from "../components/camp/routeCoordinateEnrichment";
 import KakaoRouteMap from "../components/map/KakaoRouteMap";
 
 const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
@@ -97,6 +109,60 @@ function extractCoordinates(item = {}) {
   return { lat: null, lng: null };
 }
 
+const HIDDEN_FALLBACK_PHRASES = [
+  "fallback",
+  "district_fallback_seed",
+  "synthetic fallback",
+  "synthetic_district_fallback",
+  "safe fallback",
+  "후보 부족",
+  "안전 fallback",
+  "fallback 후보",
+];
+
+function containsHiddenFallbackText(value) {
+  const text = String(value || "").toLowerCase();
+  return HIDDEN_FALLBACK_PHRASES.some((phrase) => text.includes(phrase.toLowerCase()));
+}
+
+function getNaturalCampaignExplanation(item = {}) {
+  const placeType = String(item.place_type || item.recommended_place_type || item.type || "").toLowerCase();
+
+  if (placeType.includes("subway") || placeType.includes("station") || placeType.includes("교통")) {
+    return "출퇴근 생활·교통 불편을 듣기 좋은 지점입니다.";
+  }
+  if (placeType.includes("market") || placeType.includes("시장") || placeType.includes("상권")) {
+    return "지역 상권과 생활 동선을 함께 확인하기 좋은 장소입니다.";
+  }
+  if (placeType.includes("park") || placeType.includes("공원")) {
+    return "생활 유권자와 접촉하기 좋은 현장입니다.";
+  }
+
+  return "지역 현안을 듣고 후보 메시지를 전달하기 좋은 장소입니다.";
+}
+
+function sanitizeUserExplanation(explanation, item = {}) {
+  const text = String(explanation || "").trim();
+  if (!text || containsHiddenFallbackText(text)) {
+    return getNaturalCampaignExplanation(item);
+  }
+  return text;
+}
+
+function hasValidCoordinates(item = {}) {
+  const lat = Number(item.lat);
+  const lng = Number(item.lng);
+
+  return (
+    Number.isFinite(lat) &&
+    Number.isFinite(lng) &&
+    lat >= 37.0 &&
+    lat <= 38.0 &&
+    lng >= 126.0 &&
+    lng <= 128.0
+  );
+}
+
 function getRouteItems(payload = {}) {
   const candidates = [
     payload.timeline,
@@ -112,55 +178,106 @@ function getRouteItems(payload = {}) {
   return candidates.find(Array.isArray) || [];
 }
 
+function buildRouteItemId(item = {}, index = 0, placeName = "", district = "") {
+  const stableId = firstValue(item.route_item_id, item.id, item.stop_id, item.query_id);
+  if (stableId) {
+    return String(stableId);
+  }
+
+  const slug = [index + 1, placeName || "unknown", district || "unknown"]
+    .map((part) => String(part).trim().replace(/\s+/g, "-"))
+    .join("-");
+  return `route-${slug}`;
+}
+
 function normalizeRouteStop(item = {}, index = 0) {
   const nestedPlace = item.place || item.recommendation || item.candidate || {};
-  const order = Number(firstValue(item.order, item.sequence, item.rank, index + 1)) || index + 1;
+  const order = index + 1;
   const coords = extractCoordinates(item);
+  const validCoords = hasValidCoordinates(coords) ? coords : { lat: null, lng: null };
   const score = toNumberOrNull(firstValue(item.score, item.final_score, item.suitability_score, item.final_variant_score, nestedPlace.score));
-  const reason = firstValue(
+  const rawPlaceName = firstValue(item.place_name, item.name, item.title, item.recommended_place_name, nestedPlace.name, "");
+  const district = firstValue(item.district, item.gu, item.region, item.recommended_district, nestedPlace.district, "자치구 확인");
+  const districtNormalized = firstValue(item.district_normalized, item.recommended_district_normalized, nestedPlace.district_normalized, district);
+  const displayPlaceName = normalizePlaceName({
+    ...item,
+    place_name: rawPlaceName,
+    district,
+    district_normalized: districtNormalized,
+  });
+  const placeName = rawPlaceName || displayPlaceName;
+  const placeType = firstValue(item.place_type, item.type, item.category, item.recommended_place_type, nestedPlace.place_type, nestedPlace.type, "장소 유형");
+  const source = firstValue(item.source, item.candidate_source, item.source_type, nestedPlace.source, "unknown");
+  const rawReason = firstValue(
+    item.explanation,
     item.reason,
     item.recommendation_reason,
     item.gold_label_reason,
     item.sequence_reason,
     Array.isArray(nestedPlace.reason) ? nestedPlace.reason.join(" / ") : nestedPlace.reason
   );
+  const explanation = sanitizeUserExplanation(rawReason, { ...item, place_type: placeType });
   const startTime = firstValue(item.start_time, item.time, item.visit_time);
+  const routeItemId = buildRouteItemId(item, index, placeName, districtNormalized || district);
   const stop = {
     ...item,
-    id: String(firstValue(item.id, item.stop_id, item.query_id, `stop-${order}`)),
+    id: routeItemId,
+    route_item_id: routeItemId,
     order,
     sequence: order,
-    place_name: firstValue(item.place_name, item.name, item.title, item.recommended_place_name, nestedPlace.name, "장소 확인"),
-    district: firstValue(item.district, item.gu, item.region, item.recommended_district, nestedPlace.district, "자치구 확인"),
-    district_normalized: firstValue(item.district_normalized, item.recommended_district_normalized, nestedPlace.district_normalized),
+    place_name: placeName,
+    raw_place_name: rawPlaceName || placeName,
+    display_place_name: displayPlaceName,
+    district,
+    district_normalized: districtNormalized,
     district_match: firstValue(item.district_match, nestedPlace.district_match, true),
-    place_type: firstValue(item.place_type, item.type, item.category, item.recommended_place_type, nestedPlace.place_type, nestedPlace.type, "장소 유형"),
+    place_type: placeType,
     start_time: startTime,
     end_time: firstValue(item.end_time),
     time: startTime,
-    address: firstValue(item.address, item.road_address, nestedPlace.address, "주소 확인 필요"),
-    lat: coords.lat,
-    lng: coords.lng,
+    address: firstValue(item.address, item.road_address, item.location, nestedPlace.address, "주소 확인 필요"),
+    lat: validCoords.lat,
+    lng: validCoords.lng,
+    coordinate_status: hasValidCoordinates(validCoords) ? firstValue(item.coordinate_status, "original") : firstValue(item.coordinate_status, "not_found"),
+    coordinate_source: hasValidCoordinates(validCoords) ? firstValue(item.coordinate_source, "original") : firstValue(item.coordinate_source, "missing"),
+    coordinate_status_label: getCoordinateStatusLabel(hasValidCoordinates(validCoords) ? firstValue(item.coordinate_status, "original") : firstValue(item.coordinate_status, "not_found")),
+    coordinate_status_detail: getCoordinateStatusDetail(hasValidCoordinates(validCoords) ? firstValue(item.coordinate_status, "original") : firstValue(item.coordinate_status, "not_found")),
+    kakao_place_name: item.kakao_place_name,
+    kakao_address_name: item.kakao_address_name,
+    kakao_road_address_name: item.kakao_road_address_name,
     score,
-    reason,
+    source,
+    candidate_source: firstValue(item.candidate_source, source),
+    is_fallback: item.is_fallback === true || containsHiddenFallbackText(source),
+    explanation,
+    reason: explanation,
+    has_coordinates: hasValidCoordinates(validCoords),
     tags: normalizeTags(firstValue(item.tags, item.context_tags)),
   };
 
   return {
     ...stop,
     fit_label: getFitLabel(stop.score),
-    sequence_reason: firstValue(item.sequence_reason, reason),
-    recommendation_reason: firstValue(item.recommendation_reason, reason),
-    map_position: item.map_position || (coords.lat !== null && coords.lng !== null ? { lat: coords.lat, lng: coords.lng } : undefined),
+    sequence_reason: sanitizeUserExplanation(firstValue(item.sequence_reason, explanation), stop),
+    recommendation_reason: sanitizeUserExplanation(firstValue(item.recommendation_reason, explanation), stop),
+    map_position: stop.has_coordinates ? { lat: stop.lat, lng: stop.lng } : undefined,
   };
 }
 
-function buildRouteStops(timeline = []) {
-  return timeline.map(normalizeRouteStop).sort((a, b) => a.order - b.order);
+function normalizeRouteTimeline(items = []) {
+  return items.map(normalizeRouteStop);
+}
+
+function buildRouteMarkers(timeline = []) {
+  return buildRouteMarkersFromTimeline(timeline);
+}
+
+function buildNoCoordinateItems(timeline = []) {
+  return buildNoCoordinateItemsFromTimeline(timeline);
 }
 
 function normalizeRoutePayload(payload = {}, request = {}, previousRoute = null) {
-  const timeline = buildRouteStops(getRouteItems(payload));
+  const timeline = normalizeRouteTimeline(getRouteItems(payload));
   if (!timeline.length) {
     return null;
   }
@@ -190,10 +307,6 @@ function normalizeRoutePayload(payload = {}, request = {}, previousRoute = null)
   };
 }
 
-function getCoordinateCount(stops = []) {
-  return stops.filter((stop) => Number.isFinite(Number(stop.lat)) && Number.isFinite(Number(stop.lng))).length;
-}
-
 function debugRoute(message, details = {}) {
   if (process.env.NODE_ENV !== "production") {
     console.debug(`[RouteRecommendation] ${message}`, details);
@@ -207,11 +320,11 @@ function warnRoute(message, details = {}) {
 function buildShareText(route, selectedItem) {
   const summary = route?.summary || {};
   const timeline = route?.timeline || [];
-  const lines = timeline.map((item) => `${item.time} ${item.place_name} (${item.district} · ${item.place_type})`);
+  const lines = timeline.map((item) => `${item.time} ${item.display_place_name || item.place_name} (${item.district} · ${item.place_type})`);
   return [
     `[선거비서 AI] ${summary.date || "추천 일정"} 하루 유세 동선`,
     `출발: ${summary.start_location || "확인 필요"}`,
-    `선택 일정: ${selectedItem?.time || ""} ${selectedItem?.place_name || ""}`.trim(),
+    `선택 일정: ${selectedItem?.time || ""} ${selectedItem?.display_place_name || selectedItem?.place_name || ""}`.trim(),
     ...lines,
   ].filter(Boolean).join("\n");
 }
@@ -233,6 +346,70 @@ function buildSwapOptions(item) {
   );
   const sameType = sameDistrict.filter((candidate) => candidate.place_type === placeType);
   return [...sameType, ...sameDistrict].slice(0, 4);
+}
+
+const KNOWN_START_COORDINATES = {
+  강남역: { lat: 37.4979, lng: 127.0276 },
+  성동구청: { lat: 37.5634, lng: 127.0368 },
+  왕십리역: { lat: 37.5613, lng: 127.0371 },
+  서울시청: { lat: 37.5663, lng: 126.9779 },
+};
+
+function resolveStartCoordinate(startLocation = "") {
+  const compact = String(startLocation || "").replace(/\s+/g, "");
+  const matchedKey = Object.keys(KNOWN_START_COORDINATES).find((key) => compact.includes(key));
+  return matchedKey ? KNOWN_START_COORDINATES[matchedKey] : null;
+}
+
+function getRouteStopCoordinate(stop = {}) {
+  const lat = toNumberOrNull(stop.lat);
+  const lng = toNumberOrNull(stop.lng);
+  return hasValidCoordinates({ lat, lng }) ? { lat, lng } : null;
+}
+
+function getDistanceKm(pointA, pointB) {
+  if (!pointA || !pointB) {
+    return 0;
+  }
+  const radiusKm = 6371;
+  const toRad = (value) => (Number(value) * Math.PI) / 180;
+  const dLat = toRad(pointB.lat - pointA.lat);
+  const dLng = toRad(pointB.lng - pointA.lng);
+  const lat1 = toRad(pointA.lat);
+  const lat2 = toRad(pointB.lat);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
+  return radiusKm * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function calculateCampaignRouteMetrics(stops = [], startLocation = "") {
+  const startCoordinate = resolveStartCoordinate(startLocation);
+  const stopPoints = stops.map((stop) => {
+    const coordinate = getRouteStopCoordinate(stop);
+    return coordinate ? { type: "stop", id: stop.route_item_id || stop.id, ...coordinate } : null;
+  });
+  const points = [
+    ...(startCoordinate ? [{ type: "start", ...startCoordinate }] : []),
+    ...stopPoints,
+  ].filter((point) => point && hasValidCoordinates(point));
+  const missingCoordinateCount = stops.filter((stop) => !getRouteStopCoordinate(stop)).length + (stops.length && !startCoordinate ? 1 : 0);
+  const totalDistanceKm = points.reduce((sum, point, index) => {
+    if (index === 0) {
+      return sum;
+    }
+    return sum + getDistanceKm(points[index - 1], point);
+  }, 0);
+  const estimatedMinutes = totalDistanceKm > 0
+    ? Math.max(10, Math.round((totalDistanceKm / 18) * 60) + Math.max(0, stops.length - 1) * 8)
+    : 0;
+
+  return {
+    totalDistanceKm,
+    estimatedMinutes,
+    missingCoordinateCount,
+    calculatedSegmentCount: Math.max(0, points.length - 1),
+  };
 }
 
 function RouteForm({ form, options, onChange, onToggleArray, onSubmit, isSubmitting, isDirty, lastUpdated }) {
@@ -400,7 +577,9 @@ function RouteSummary({ route }) {
 }
 
 function RouteWarnings({ route }) {
-  const warnings = [...new Set(route?.debug?.warnings || [])].filter(Boolean).slice(0, 3);
+  const warnings = [...new Set(route?.debug?.warnings || [])]
+    .filter((warning) => warning && !containsHiddenFallbackText(warning))
+    .slice(0, 3);
   if (!warnings.length) {
     return null;
   }
@@ -411,6 +590,74 @@ function RouteWarnings({ route }) {
         <span key={warning}>{warning}</span>
       ))}
     </div>
+  );
+}
+
+function CoordinateQualityPanel({ timeline = [], markers = [], noCoordinateItems = [], coordinateLoading = false }) {
+  const districtCounts = timeline.reduce((counts, item) => {
+    const district = item.district_normalized || item.district || "자치구 확인";
+    counts[district] = (counts[district] || 0) + 1;
+    return counts;
+  }, {});
+  const districtEntries = Object.entries(districtCounts);
+  const maxDistrict = districtEntries.reduce((best, entry) => entry[1] > (best?.[1] || 0) ? entry : best, null);
+  const isSkewed = districtEntries.length >= 2 && maxDistrict?.[1] >= Math.ceil(timeline.length * 0.7);
+
+  if (!timeline.length) {
+    return (
+      <Card className="routeCoordinatePanel">
+        <div className="cardHeaderLine">
+          <div>
+            <Tag tone="amber">지도 표시 기준</Tag>
+            <h2>추천 후 좌표 검증 결과가 표시됩니다</h2>
+          </div>
+        </div>
+        <p className="helperText">검증된 실제 좌표가 있는 장소만 marker로 표시하고, 좌표가 없는 후보는 타임라인에 유지합니다.</p>
+      </Card>
+    );
+  }
+
+  return (
+    <Card className="routeCoordinatePanel" data-route-coordinate-panel="true">
+      <div className="cardHeaderLine">
+        <div>
+          <Tag tone={noCoordinateItems.length ? "amber" : "green"}>{coordinateLoading ? "좌표 확인 중" : "좌표 검증"}</Tag>
+          <h2>지도 표시 현황</h2>
+        </div>
+        <strong>{markers.length}/{timeline.length} marker</strong>
+      </div>
+      <div className="coordinateMetricGrid">
+        <span>전체 추천 후보 <strong>{timeline.length}</strong></span>
+        <span>지도 marker <strong>{markers.length}</strong></span>
+        <span>좌표 확인 필요 <strong>{noCoordinateItems.length}</strong></span>
+      </div>
+      <p className="helperText">
+        Kakao 검색과 자치구 검증을 통과한 좌표만 지도에 표시합니다. 좌표가 없는 후보는 삭제하지 않고 아래 목록과 타임라인에서 확인할 수 있습니다.
+      </p>
+      {isSkewed ? (
+        <p className="routeBalanceNotice">
+          선택 자치구별 추천 분포가 {maxDistrict[0]}에 집중되어 있습니다. 시연에서는 자치구를 줄이거나 장소 유형을 넓혀 균형을 조정할 수 있습니다.
+        </p>
+      ) : null}
+      {noCoordinateItems.length ? (
+        <details className="coordinateIssueDetails" open>
+          <summary>좌표 확인 필요 후보 {noCoordinateItems.length}개</summary>
+          <ol className="coordinateIssueList">
+            {noCoordinateItems.map((item) => (
+              <li key={item.route_item_id || item.id}>
+                <strong>{item.order}번 {item.display_place_name || item.place_name}</strong>
+                <span>{item.district_normalized || item.district} · {getCoordinateStatusLabel(item.coordinate_status)}</span>
+                <small>{item.address || "주소 확인 필요"} · {getCoordinateStatusDetail(item.coordinate_status)}</small>
+              </li>
+            ))}
+          </ol>
+        </details>
+      ) : null}
+      <details className="coordinateIssueDetails">
+        <summary>개발자용 좌표 debug</summary>
+        <pre>{JSON.stringify(getCoordinateDebugSummary(timeline), null, 2)}</pre>
+      </details>
+    </Card>
   );
 }
 
@@ -447,27 +694,121 @@ function SwapPlaceModal({ item, options, onClose, onSwap }) {
   );
 }
 
+function CampaignRouteBuilder({
+  selectedItems = [],
+  startLocation = "",
+  onSelectStop,
+  onMoveStop,
+  onRemoveStop,
+}) {
+  const metrics = calculateCampaignRouteMetrics(selectedItems, startLocation);
+  const duplicateCount = selectedItems.length - new Set(selectedItems.map((item) => item.route_item_id || item.id)).size;
+
+  return (
+    <Card
+      className="campaignRouteBuilder"
+      data-route-builder="true"
+      data-selected-route-count={selectedItems.length}
+      data-total-distance-km={metrics.totalDistanceKm.toFixed(2)}
+    >
+      <div className="cardHeaderLine">
+        <div>
+          <Tag tone="amber">시연 동선</Tag>
+          <h2>선택 유세지로 실제 Route 만들기</h2>
+        </div>
+        <Tag tone={duplicateCount ? "amber" : "green"}>{selectedItems.length}/5 선택</Tag>
+      </div>
+      <div className="routeBuilderMetricGrid">
+        <span>총 이동거리 <strong>{metrics.totalDistanceKm ? `${metrics.totalDistanceKm.toFixed(1)}km` : "계산 대기"}</strong></span>
+        <span>예상 이동시간 <strong>{metrics.estimatedMinutes ? `${metrics.estimatedMinutes}분` : "계산 대기"}</strong></span>
+        <span>계산 구간 <strong>{metrics.calculatedSegmentCount}</strong></span>
+        <span>좌표 미확보 <strong>{Math.max(0, metrics.missingCoordinateCount)}</strong></span>
+      </div>
+      {selectedItems.length ? (
+        <ol className="selectedCampaignRouteList">
+          {selectedItems.map((item, index) => {
+            const stopId = item.route_item_id || item.id;
+            return (
+              <li
+                key={stopId}
+                data-route-builder-item="true"
+                data-route-item-id={stopId}
+                data-route-order={index + 1}
+                data-place-name={item.display_place_name || item.place_name}
+              >
+                <button type="button" className="routeBuilderSelect" onClick={() => onSelectStop?.(stopId)}>
+                  <span>{index + 1}</span>
+                  <strong>{item.display_place_name || item.place_name}</strong>
+                  <small>{item.district} · {item.place_type} · {item.has_coordinates ? "거리 계산 가능" : getCoordinateStatusLabel(item.coordinate_status)}</small>
+                </button>
+                <div className="routeBuilderControls" aria-label={`${item.place_name} 순서 조정`}>
+                  <button type="button" onClick={() => onMoveStop(stopId, -1)} disabled={index === 0}>위</button>
+                  <button type="button" onClick={() => onMoveStop(stopId, 1)} disabled={index === selectedItems.length - 1}>아래</button>
+                  <button type="button" onClick={() => onRemoveStop(stopId)}>제거</button>
+                </div>
+              </li>
+            );
+          })}
+        </ol>
+      ) : (
+        <p className="helperText">추천 타임라인에서 장소를 선택한 뒤 현재 일정 카드의 “동선에 추가”를 눌러 1~5순위 유세 루트를 구성합니다.</p>
+      )}
+      <p className="helperText">
+        같은 장소는 중복 추가하지 않으며, 제거 후 다시 추가할 수 있습니다. 거리와 시간은 검증된 좌표 구간만 기준으로 재계산합니다.
+      </p>
+    </Card>
+  );
+}
+
 export default function RoutePlannerPage() {
   const [options, setOptions] = useState(null);
   const [form, setForm] = useState(null);
   const [route, setRoute] = useState(null);
-  const [selectedStopId, setSelectedStopId] = useState("stop-1");
+  const [selectedStopIndex, setSelectedStopIndex] = useState(0);
+  const [selectedVisitIds, setSelectedVisitIds] = useState([]);
   const [savedStopIds, setSavedStopIds] = useState([]);
   const [errorMessage, setErrorMessage] = useState("");
   const [toastMessage, setToastMessage] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isCoordinateLoading, setIsCoordinateLoading] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
   const [lastUpdated, setLastUpdated] = useState("");
   const [isSwapOpen, setIsSwapOpen] = useState(false);
   const timelineRefs = useRef({});
   const previousDistrictsKeyRef = useRef(null);
 
-  const routeStops = useMemo(() => buildRouteStops(route?.timeline || []), [route]);
+  const routeTimeline = useMemo(() => route?.timeline || [], [route]);
+  const mapMarkers = useMemo(() => buildRouteMarkers(routeTimeline), [routeTimeline]);
+  const noCoordinateItems = useMemo(() => buildNoCoordinateItems(routeTimeline), [routeTimeline]);
   const districtsKey = useMemo(() => JSON.stringify(form?.districts || []), [form?.districts]);
   const selectedItem = useMemo(
-    () => routeStops.find((item) => item.id === selectedStopId) || routeStops[0],
-    [routeStops, selectedStopId]
+    () => routeTimeline[selectedStopIndex] || routeTimeline[0] || null,
+    [routeTimeline, selectedStopIndex]
+  );
+  const selectedStopId = selectedItem?.route_item_id || selectedItem?.id || "";
+  const selectedMarker = useMemo(
+    () => mapMarkers.find((marker) => marker.route_item_id === selectedItem?.route_item_id) || null,
+    [mapMarkers, selectedItem?.route_item_id]
+  );
+  const selectedVisitSet = useMemo(() => new Set(selectedVisitIds), [selectedVisitIds]);
+  const selectedCampaignRouteItems = useMemo(() => (
+    selectedVisitIds
+      .map((stopId) => routeTimeline.find((item) => item.route_item_id === stopId || item.id === stopId))
+      .filter(Boolean)
+  ), [routeTimeline, selectedVisitIds]);
+  const selectedItemInCampaignRoute = selectedItem
+    ? selectedVisitSet.has(selectedItem.route_item_id || selectedItem.id)
+    : false;
+  const selectedCanRenderMarker = selectedItem ? isMarkerEligible(selectedItem) : false;
+  const coordinateStatusMessage = useMemo(
+    () => getCoordinateStatusMessage({
+      coordinateLoading: isCoordinateLoading,
+      totalCount: routeTimeline.length,
+      markerCount: mapMarkers.length,
+      noCoordinateCount: noCoordinateItems.length,
+    }),
+    [isCoordinateLoading, mapMarkers.length, noCoordinateItems.length, routeTimeline.length]
   );
   const swapOptions = useMemo(() => buildSwapOptions(selectedItem), [selectedItem]);
 
@@ -476,18 +817,28 @@ export default function RoutePlannerPage() {
     window.setTimeout(() => setToastMessage(""), 2200);
   }, []);
 
-  const handleSelectStop = useCallback((stopId, shouldScroll = true) => {
-    setSelectedStopId(stopId);
+  const handleSelectStopIndex = useCallback((index, shouldScroll = true) => {
+    const safeIndex = Number.isInteger(index) && index >= 0 ? index : 0;
+    const stopId = routeTimeline[safeIndex]?.route_item_id || routeTimeline[safeIndex]?.id || "";
+    setSelectedStopIndex(safeIndex);
     if (shouldScroll) {
       window.setTimeout(() => {
         timelineRefs.current[stopId]?.scrollIntoView({ behavior: "smooth", block: "center" });
       }, 80);
     }
-  }, []);
+  }, [routeTimeline]);
+
+  const handleSelectStop = useCallback((stopId, shouldScroll = true) => {
+    const index = routeTimeline.findIndex((item) => item.route_item_id === stopId || item.id === stopId);
+    if (index >= 0) {
+      handleSelectStopIndex(index, shouldScroll);
+    }
+  }, [handleSelectStopIndex, routeTimeline]);
 
   const loadInitialData = useCallback(async () => {
     try {
       setIsLoading(true);
+      setIsCoordinateLoading(false);
       setErrorMessage("");
       const [optionsPayload, samplePayload] = await Promise.all([
         fetchJson("/route/options"),
@@ -499,12 +850,26 @@ export default function RoutePlannerPage() {
       }
       setOptions(optionsPayload);
       setForm(optionsPayload.default_request || normalizedSample.request || {});
-      setRoute(normalizedSample);
-      setSelectedStopId(normalizedSample.timeline[0]?.id || "stop-1");
+      setIsCoordinateLoading(true);
+      const enrichedTimeline = await enrichRouteTimelineCoordinates(normalizedSample.timeline, {
+        coordinateSources: getRouteItems(samplePayload),
+      });
+      const enrichedSample = {
+        ...normalizedSample,
+        timeline: enrichedTimeline,
+        debug: {
+          ...(normalizedSample.debug || {}),
+          coordinate_enrichment: getCoordinateDebugSummary(enrichedTimeline),
+        },
+      };
+      setRoute(enrichedSample);
+      setSelectedStopIndex(0);
+      setSelectedVisitIds([]);
       setLastUpdated("방금 전");
     } catch (error) {
       setErrorMessage(error.message);
     } finally {
+      setIsCoordinateLoading(false);
       setIsLoading(false);
     }
   }, []);
@@ -524,7 +889,8 @@ export default function RoutePlannerPage() {
     if (previousDistrictsKeyRef.current !== districtsKey) {
       previousDistrictsKeyRef.current = districtsKey;
       setRoute(null);
-      setSelectedStopId("stop-1");
+      setSelectedStopIndex(0);
+      setSelectedVisitIds([]);
       setIsSwapOpen(false);
       setLastUpdated("");
     }
@@ -547,6 +913,54 @@ export default function RoutePlannerPage() {
     }
   }, [savedStopIds]);
 
+  useEffect(() => {
+    if (selectedStopIndex >= routeTimeline.length && routeTimeline.length > 0) {
+      setSelectedStopIndex(0);
+    }
+  }, [routeTimeline.length, selectedStopIndex]);
+
+  useEffect(() => {
+    const validIds = new Set(routeTimeline.map((item) => item.route_item_id || item.id));
+    setSelectedVisitIds((current) => current.filter((stopId) => validIds.has(stopId)));
+  }, [routeTimeline]);
+
+  useEffect(() => {
+    if (!routeTimeline.length) {
+      return;
+    }
+    debugRoute("timeline normalized", routeTimeline.map((item) => ({
+      order: item.order,
+      id: item.route_item_id,
+      place_name: item.place_name,
+      display_place_name: item.display_place_name,
+      district: item.district_normalized,
+      lat: item.lat,
+      lng: item.lng,
+      source: item.source,
+      is_fallback: item.is_fallback,
+    })));
+  }, [routeTimeline]);
+
+  useEffect(() => {
+    debugRoute("map markers", mapMarkers.map((marker) => ({
+      order: marker.order,
+      id: marker.route_item_id,
+      place_name: marker.place_name,
+      district: marker.district_normalized,
+      lat: marker.lat,
+      lng: marker.lng,
+    })));
+  }, [mapMarkers]);
+
+  useEffect(() => {
+    debugRoute("selected stop", {
+      selectedStopIndex,
+      selectedStop: selectedItem?.display_place_name || selectedItem?.place_name,
+      selectedMarker: selectedMarker?.place_name,
+      sameId: Boolean(selectedItem?.route_item_id && selectedItem.route_item_id === selectedMarker?.route_item_id),
+    });
+  }, [selectedStopIndex, selectedItem, selectedMarker]);
+
   const handleChange = useCallback((key, value) => {
     setForm((current) => ({ ...current, [key]: value }));
     setIsDirty(true);
@@ -566,14 +980,24 @@ export default function RoutePlannerPage() {
     }
 
     const requestPayload = normalizeRequest(form);
-    console.log("[Route Recommend Request]", requestPayload);
+    debugRoute("request payload", requestPayload);
     try {
       setIsSubmitting(true);
+      setIsCoordinateLoading(false);
+      setErrorMessage("");
+      setRoute(null);
+      setSelectedStopIndex(0);
+      setSelectedVisitIds([]);
+      setIsSwapOpen(false);
+      if (typeof window !== "undefined") {
+        window.__lastRouteDebug = null;
+        window.__lastNormalizedRouteDebug = null;
+      }
       const payload = await postJson("/route/recommend", requestPayload);
       if (typeof window !== "undefined") {
         window.__lastRouteDebug = payload.debug || null;
       }
-      console.log("[Route Recommend Response Debug]", payload.debug || payload);
+      debugRoute("response debug", payload.debug || payload);
       debugRoute("route response received", {
         endpoint: "/route/recommend",
         responseKeys: Object.keys(payload || {}),
@@ -583,26 +1007,44 @@ export default function RoutePlannerPage() {
       if (!normalizedPayload) {
         throw new Error("동선 API 응답에 방문 지점이 없습니다.");
       }
-      setRoute(normalizedPayload);
+      setIsCoordinateLoading(true);
+      const enrichedTimeline = await enrichRouteTimelineCoordinates(normalizedPayload.timeline, {
+        coordinateSources: getRouteItems(payload),
+      });
+      const enrichedPayload = {
+        ...normalizedPayload,
+        timeline: enrichedTimeline,
+        debug: {
+          ...(normalizedPayload.debug || {}),
+          coordinate_enrichment: getCoordinateDebugSummary(enrichedTimeline),
+        },
+      };
+      setRoute(enrichedPayload);
+      setSelectedVisitIds([]);
       if (typeof window !== "undefined") {
-        window.__lastNormalizedRouteDebug = normalizedPayload.debug || null;
+        window.__lastNormalizedRouteDebug = enrichedPayload.debug || null;
       }
-      setSelectedStopId(normalizedPayload.timeline[0]?.id || "stop-1");
+      setSelectedStopIndex(0);
       setIsDirty(false);
       setLastUpdated("방금 전");
       debugRoute("route state normalized", {
-        normalizedStopsLength: normalizedPayload.timeline.length,
-        markerStopsLength: getCoordinateCount(normalizedPayload.timeline),
-        selectedStopId: normalizedPayload.timeline[0]?.id,
+        normalizedStopsLength: enrichedPayload.timeline.length,
+        markerStopsLength: getCoordinateDebugSummary(enrichedPayload.timeline).marker_count,
+        selectedStopId: enrichedPayload.timeline[0]?.route_item_id,
+        coordinate_enrichment: enrichedPayload.debug?.coordinate_enrichment,
       });
-      const districts = (form.districts || []).slice(0, 2).join("·") || normalizedPayload?.summary?.start_location_district || "서울";
-      showToast(`${districts} / ${form.target_voter_group || "타깃"} 조건으로 ${normalizedPayload.timeline.length}개 일정을 추천했습니다.`);
+      const districts = (form.districts || []).slice(0, 2).join("·") || enrichedPayload?.summary?.start_location_district || "서울";
+      showToast(`${districts} / ${form.target_voter_group || "타깃"} 조건으로 ${enrichedPayload.timeline.length}개 일정을 추천했습니다.`);
     } catch (error) {
-      warnRoute("route recommendation failed; keeping current route", {
+      warnRoute("route recommendation failed; cleared current route", {
         endpoint: "/route/recommend",
         message: error.message,
       });
+      setErrorMessage(error.message || "동선 추천 중 오류가 발생했습니다.");
+      setRoute(null);
+      setSelectedStopIndex(0);
     } finally {
+      setIsCoordinateLoading(false);
       setIsSubmitting(false);
     }
   }, [form, route, showToast]);
@@ -643,16 +1085,36 @@ export default function RoutePlannerPage() {
       return {
         ...current,
         timeline: (current.timeline || []).map((item, index) => {
-          if (getStopId(item, index) !== selectedItem.id) {
+          if ((item.route_item_id || getStopId(item, index)) !== selectedItem.route_item_id) {
             return item;
           }
+          const optionCoords = extractCoordinates(option);
+          const safeCoords = hasValidCoordinates(optionCoords) ? optionCoords : { lat: null, lng: null };
+          const explanation = sanitizeUserExplanation(option.reason, { ...item, ...option });
+          const displayPlaceName = normalizePlaceName({
+            ...option,
+            district_normalized: option.district,
+          });
           return {
             ...item,
             place_name: option.place_name,
+            raw_place_name: option.place_name,
+            display_place_name: displayPlaceName,
             district: option.district,
+            district_normalized: option.district,
             place_type: option.place_type,
             address: option.address,
-            recommendation_reason: option.reason,
+            lat: safeCoords.lat,
+            lng: safeCoords.lng,
+            map_position: hasValidCoordinates(safeCoords) ? { lat: safeCoords.lat, lng: safeCoords.lng } : undefined,
+            has_coordinates: hasValidCoordinates(safeCoords),
+            coordinate_status: hasValidCoordinates(safeCoords) ? "original" : "not_found",
+            coordinate_source: hasValidCoordinates(safeCoords) ? "original" : "manual_swap_missing",
+            coordinate_status_label: getCoordinateStatusLabel(hasValidCoordinates(safeCoords) ? "original" : "not_found"),
+            coordinate_status_detail: getCoordinateStatusDetail(hasValidCoordinates(safeCoords) ? "original" : "not_found"),
+            explanation,
+            reason: explanation,
+            recommendation_reason: explanation,
             sequence_reason: `${option.place_name}으로 교체했습니다. 같은 시간대에 배치 가능한 대체 후보입니다.`,
             score: Number.isFinite(Number(item.score)) ? Math.max(0, Number(item.score) - 0.03) : item.score,
           };
@@ -662,6 +1124,38 @@ export default function RoutePlannerPage() {
     setIsSwapOpen(false);
     showToast(`${option.place_name}으로 일정을 교체했습니다.`);
   }, [selectedItem, showToast]);
+
+  const handleAddSelectedToCampaignRoute = useCallback(() => {
+    if (!selectedItem) {
+      return;
+    }
+    const stopId = selectedItem.route_item_id || selectedItem.id;
+    setSelectedVisitIds((current) => {
+      if (current.includes(stopId)) {
+        return current;
+      }
+      return [...current, stopId];
+    });
+    showToast(`${selectedItem.display_place_name || selectedItem.place_name}을 시연 동선에 추가했습니다.`);
+  }, [selectedItem, showToast]);
+
+  const handleRemoveCampaignRouteStop = useCallback((stopId) => {
+    setSelectedVisitIds((current) => current.filter((item) => item !== stopId));
+    showToast("시연 동선에서 제거했습니다.");
+  }, [showToast]);
+
+  const handleMoveCampaignRouteStop = useCallback((stopId, direction) => {
+    setSelectedVisitIds((current) => {
+      const index = current.indexOf(stopId);
+      const nextIndex = index + direction;
+      if (index < 0 || nextIndex < 0 || nextIndex >= current.length) {
+        return current;
+      }
+      const next = [...current];
+      [next[index], next[nextIndex]] = [next[nextIndex], next[index]];
+      return next;
+    });
+  }, []);
 
   const isSaved = selectedItem ? savedStopIds.includes(selectedItem.id) : false;
 
@@ -702,28 +1196,71 @@ export default function RoutePlannerPage() {
                   dangerouslySetInnerHTML={{ __html: JSON.stringify(route.debug).replace(/</g, "\\u003c") }}
                 />
               ) : null}
+              <CoordinateQualityPanel
+                timeline={routeTimeline}
+                markers={mapMarkers}
+                noCoordinateItems={noCoordinateItems}
+                coordinateLoading={isCoordinateLoading}
+              />
+              <CampaignRouteBuilder
+                selectedItems={selectedCampaignRouteItems}
+                startLocation={form.start_location}
+                onSelectStop={(stopId) => handleSelectStop(stopId, true)}
+                onMoveStop={handleMoveCampaignRouteStop}
+                onRemoveStop={handleRemoveCampaignRouteStop}
+              />
               <div className="routeOutputGrid">
                 <KakaoRouteMap
-                  stops={routeStops}
+                  stops={mapMarkers}
                   selectedStopId={selectedStopId}
                   onSelectStop={(stopId) => handleSelectStop(stopId, true)}
                   startLabel={route?.summary?.start_location || form.start_location}
+                  noCoordinateCount={noCoordinateItems.length}
+                  totalStopCount={routeTimeline.length}
+                  coordinateLoading={isCoordinateLoading}
+                  coordinateStatusMessage={coordinateStatusMessage}
                 />
                 <Card className="selectedRouteCard">
                   <div className="cardHeaderLine">
                     <Tag tone="amber">현재 일정</Tag>
                     {isSaved ? <Tag tone="blue">저장됨</Tag> : null}
+                    {selectedItem && !selectedCanRenderMarker ? <Tag tone="amber">{getCoordinateStatusLabel(selectedItem.coordinate_status)}</Tag> : null}
                   </div>
                   {selectedItem ? (
                     <>
-                      <h2>{selectedItem.place_name}</h2>
+                      <h2>{selectedItem.display_place_name || selectedItem.place_name}</h2>
+                      {selectedItem.raw_place_name && selectedItem.raw_place_name !== (selectedItem.display_place_name || selectedItem.place_name) ? (
+                        <p className="rawPlaceName">원본 장소명: {selectedItem.raw_place_name}</p>
+                      ) : null}
                       <p>{getTimeRange(selectedItem.time)} · {selectedItem.district} · {selectedItem.place_type}</p>
+                      <p className="selectedAddress">{selectedItem.address || "주소 확인 필요"}</p>
                       <span className="selectedScore">{getFitLabel(selectedItem.score)}</span>
                       <div className="selectedMetaList">
                         <span>{getActivityType(selectedItem)}</span>
                         <span>{buildChecklist(selectedItem).join(" / ")}</span>
+                        <span>{selectedCanRenderMarker ? "지도 marker 표시" : getCoordinateStatusDetail(selectedItem.coordinate_status)}</span>
                       </div>
                       <p>{buildShortReason(selectedItem)}</p>
+                      <div className="selectedRouteActions">
+                        <button
+                          type="button"
+                          onClick={handleAddSelectedToCampaignRoute}
+                          disabled={selectedItemInCampaignRoute}
+                        >
+                          {selectedItemInCampaignRoute ? "동선에 포함됨" : "동선에 추가"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveCampaignRouteStop(selectedItem.route_item_id || selectedItem.id)}
+                          disabled={!selectedItemInCampaignRoute}
+                        >
+                          동선에서 제거
+                        </button>
+                      </div>
+                      <details className="scoreDetails selectedExplainability" open>
+                        <summary>추천 이유 보기</summary>
+                        <RouteExplainabilityPanel item={selectedItem} />
+                      </details>
                       <RouteActionPanel
                         isSaved={isSaved}
                         onSave={handleSave}
@@ -745,12 +1282,13 @@ export default function RoutePlannerPage() {
                 description="몇 시에 어디를 갈지 먼저 확인합니다."
               >
                 <RouteTimeline
-                  items={routeStops}
+                  items={routeTimeline}
+                  selectedStopIndex={selectedStopIndex}
                   selectedStopId={selectedStopId}
-                  onSelect={(stopId) => handleSelectStop(stopId, false)}
+                  onSelect={(stopId, index) => handleSelectStopIndex(index, false)}
                   itemRefs={timelineRefs}
                   savedStopIds={savedStopIds}
-                  showScoreDetails={false}
+                  showScoreDetails
                 />
               </Section>
             </section>

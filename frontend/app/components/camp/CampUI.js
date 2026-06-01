@@ -1,11 +1,13 @@
 "use client";
 
 import { DISTRICT_FALLBACK_SEEDS } from "./districtFallbackSeeds";
+import { buildRouteFeatureExplanation } from "./routeCoordinateEnrichment";
 import { STATIC_REAL_ROUTE_CANDIDATES } from "./staticRealRouteCandidates";
 
 const NAV_ITEMS = [
   { key: "home", label: "홈", href: "/", caption: "운영 홈" },
   { key: "route", label: "동선", href: "/route", caption: "하루 일정" },
+  { key: "future", label: "실험", href: "/future-prediction", caption: "미래 평가" },
   { key: "recommend", label: "추천", href: "/recommend", caption: "장소 추천" },
   { key: "map", label: "지도", href: "/map", caption: "동선 미리보기" },
   { key: "evaluation", label: "평가", href: "/evaluation", caption: "추천 품질 확인" },
@@ -835,7 +837,7 @@ function ensureDistrictSafeRoutePayload(payload = {}, request = {}, staticRealSo
     warnings.push(`Returned ${timeline.length} recommendations because selected district candidates were insufficient for requested ${requestedVisits} visits.`);
   }
   if (timeline.some((item) => item.lat == null || item.lng == null)) {
-    warnings.push("좌표가 없는 후보는 지도에 권역 기준 위치로 표시되며, 타임라인에는 정상 표시됩니다.");
+    warnings.push("좌표가 없는 후보는 지도에 표시하지 않고 타임라인에서 좌표 확인 필요로 분리합니다.");
   }
   const staticRealCandidateCount = collectStaticRealRouteCandidates(request, selected, staticRealSourceGroups).length;
 
@@ -1060,7 +1062,7 @@ async function getRouteFallback(path, body) {
       warnings.push(`Returned ${timeline.length} recommendations because selected district candidates were insufficient for requested ${requestedVisits} visits.`);
     }
     if (timeline.some((item) => item.lat == null || item.lng == null)) {
-      warnings.push("좌표가 없는 후보는 지도에 권역 기준 위치로 표시되며, 타임라인에는 정상 표시됩니다.");
+      warnings.push("좌표가 없는 후보는 지도에 표시하지 않고 타임라인에서 좌표 확인 필요로 분리합니다.");
     }
 
     return withStaticMeta({
@@ -1150,6 +1152,24 @@ async function tryStaticFallback(path, body) {
 export async function fetchJson(path, options = {}) {
   const apiBaseUrl = getApiBaseUrl();
   const requestBody = parseRequestBody(options.body);
+  const requestPathname = getRequestUrl(path).pathname;
+  const requestMethod = String(options.method || "GET").toUpperCase();
+  const shouldPreferStaticSnapshot =
+    requestMethod === "GET" &&
+    (
+      requestPathname.startsWith("/optimized/") ||
+      requestPathname === "/route/options" ||
+      requestPathname === "/route/sample" ||
+      requestPathname === "/evaluation/dashboard" ||
+      requestPathname === "/coverage/dashboard"
+    );
+
+  if (shouldPreferStaticSnapshot) {
+    const staticPayload = await tryStaticFallback(path, options.body);
+    if (staticPayload) {
+      return staticPayload;
+    }
+  }
 
   if (shouldUseStaticFallback(apiBaseUrl)) {
     const staticPayload = await tryStaticFallback(path, options.body);
@@ -1161,7 +1181,7 @@ export async function fetchJson(path, options = {}) {
 
   let response;
   const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
-  const requestTimeoutMs = getRequestUrl(path).pathname === "/route/recommend" ? 8000 : API_TIMEOUT_MS;
+  const requestTimeoutMs = requestPathname === "/route/recommend" ? 8000 : API_TIMEOUT_MS;
   const timeoutId = controller ? globalThis.setTimeout(() => controller.abort(), requestTimeoutMs) : null;
 
   try {
@@ -1198,7 +1218,7 @@ export async function fetchJson(path, options = {}) {
   }
 
   const payload = await response.json();
-  if (getRequestUrl(path).pathname === "/route/recommend") {
+  if (requestPathname === "/route/recommend") {
     let staticRouteData = {};
     let staticRecommendationData = {};
     try {
@@ -1549,10 +1569,43 @@ export function RouteScoreBreakdown({ breakdown = {}, score }) {
   );
 }
 
+export function RouteExplainabilityPanel({ item = {} }) {
+  const explanation = item.feature_explanation || buildRouteFeatureExplanation(item);
+  const scoreComponents = explanation.score_components || [];
+
+  return (
+    <div className="routeExplainabilityPanel" aria-label="추천 이유와 점수 구성">
+      <p className="reasonText expanded">{explanation.headline}</p>
+      <div className="reasonBadgeRow compact">
+        {(explanation.reasons || []).map((reason) => (
+          <Tag key={reason.label} tone="blue">{reason.label}</Tag>
+        ))}
+      </div>
+      <ul className="routeReasonList">
+        {(explanation.reasons || []).map((reason) => (
+          <li key={`${reason.label}-${reason.reason}`}>{reason.reason}</li>
+        ))}
+      </ul>
+      <div className="featureScoreGrid">
+        {scoreComponents.map((component) => (
+          <div key={component.key} className="featureScoreRow">
+            <div>
+              <span>{component.label}</span>
+              <small>{component.description}</small>
+            </div>
+            <strong>{formatMetric(component.value, 2)}</strong>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function RouteTimeline({
   items = [],
   selectedOrder,
   selectedStopId,
+  selectedStopIndex,
   onSelect,
   itemRefs,
   savedStopIds = [],
@@ -1566,12 +1619,24 @@ export function RouteTimeline({
     <div className="routeTimelineList">
       {items.map((item, index) => {
         const stopId = getStopId(item, index);
-        const isActive = selectedStopId ? selectedStopId === stopId : selectedOrder === item.order;
+        const displayPlaceName = item.display_place_name || item.place_name;
+        const rawPlaceName = item.raw_place_name || item.place_name;
+        const showRawPlaceName = rawPlaceName && rawPlaceName !== displayPlaceName;
+        const coordinateLabel = item.coordinate_status_label || (!item.has_coordinates ? "좌표 확인 필요" : "");
+        const isActive = selectedStopId
+          ? selectedStopId === stopId
+          : Number.isInteger(selectedStopIndex)
+            ? selectedStopIndex === index
+            : selectedOrder === item.order;
         const isSaved = savedStopIds.includes(stopId);
 
         return (
           <article
             key={stopId}
+            data-route-item-id={stopId}
+            data-route-order={item.order || index + 1}
+            data-place-name={displayPlaceName}
+            data-district-normalized={item.district_normalized || item.district || ""}
             ref={(node) => {
               if (itemRefs?.current) {
                 itemRefs.current[stopId] = node;
@@ -1586,16 +1651,16 @@ export function RouteTimeline({
               </div>
             ) : null}
             <div className="routeStepRow">
-              <button type="button" onClick={() => onSelect?.(stopId)} className="routeTimeButton" aria-label={`${item.time} ${item.place_name} 선택`}>
+              <button type="button" onClick={() => onSelect?.(stopId, index, item)} className="routeTimeButton" aria-label={`${item.time} ${item.place_name} 선택`}>
                 <time>{item.time}</time>
               </button>
               <div
                 className="routeStepCard"
-                onClick={() => onSelect?.(stopId)}
+                onClick={() => onSelect?.(stopId, index, item)}
                 onKeyDown={(event) => {
                   if (event.key === "Enter" || event.key === " ") {
                     event.preventDefault();
-                    onSelect?.(stopId);
+                    onSelect?.(stopId, index, item);
                   }
                 }}
                 role="button"
@@ -1607,10 +1672,12 @@ export function RouteTimeline({
                     <Tag tone="amber">{item.order}번</Tag>
                     {isActive ? <Tag tone="green">현재 일정</Tag> : null}
                     {isSaved ? <Tag tone="blue">저장됨</Tag> : null}
+                    {coordinateLabel ? <Tag tone={item.has_coordinates ? "blue" : "amber"}>{coordinateLabel}</Tag> : null}
                   </div>
                   <span className="scorePill">{getFitLabel(item.score)}</span>
                 </div>
-                <h3>{item.place_name}</h3>
+                <h3>{displayPlaceName}</h3>
+                {showRawPlaceName ? <p className="rawPlaceName">원본: {rawPlaceName}</p> : null}
                 <p>{getTimeRange(item.time)} · {item.district} · {item.place_type}</p>
                 <div className="timelineMetaGrid">
                   <span>{getActivityType(item)}</span>
@@ -1620,10 +1687,8 @@ export function RouteTimeline({
                 <p className="sequenceText">{buildShortReason(item)}</p>
                 {showScoreDetails ? (
                   <details className="scoreDetails">
-                    <summary>점수 구성 보기</summary>
-                    <p className="reasonText expanded">{item.sequence_reason}</p>
-                    <p className="reasonText expanded">{item.recommendation_reason}</p>
-                    <RouteScoreBreakdown breakdown={item.score_breakdown} score={item.score} />
+                    <summary>추천 이유 보기</summary>
+                    <RouteExplainabilityPanel item={item} />
                   </details>
                 ) : null}
               </div>

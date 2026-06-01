@@ -1,0 +1,7 @@
+﻿url,status_code,success,contains_undefined_or_nan,bytes,error_message
+https://election-campaign-coral.vercel.app/,200,True,True,7162,
+https://election-campaign-coral.vercel.app/route,200,True,True,7126,
+https://election-campaign-coral.vercel.app/recommend,200,True,True,7107,
+https://election-campaign-coral.vercel.app/evaluation,200,True,True,7007,
+https://election-campaign-coral.vercel.app/data/evaluation_summary.json,200,True,False,43620,
+https://election-campaign-coral.vercel.app/data/recommendation_results.json,200,True,False,1759841,

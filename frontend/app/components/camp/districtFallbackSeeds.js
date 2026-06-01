@@ -1,4 +1,4 @@
-const FALLBACK_EXPLANATION = "해당 자치구 내 후보 부족 시 사용하는 안전 fallback 후보입니다.";
+const FALLBACK_EXPLANATION = "해당 자치구 내 후보가 부족할 때 사용하는 보조 후보입니다.";
 const FALLBACK_SCORE = 1.05;
 
 function seed(place_name, district, place_type, address) {

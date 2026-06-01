@@ -1,0 +1,25 @@
+{
+  "base_url": "https://election-campaign-coral.vercel.app",
+  "gold_total_rows": 391,
+  "strong_place_rows": 169,
+  "candidate_rows": {
+    "정원오": 244,
+    "오세훈": 147
+  },
+  "baseline": {
+    "P@1": 0.0177514792899408,
+    "R@10": 0.2485207100591716,
+    "NDCG@10": 0.0963078948645861
+  },
+  "proposed": {
+    "P@1": 0.0710059171597633,
+    "R@10": 0.6804733727810651,
+    "NDCG@10": 0.3182257668025919
+  },
+  "optimized_proposed": {
+    "P@1": 0.2899408284023668,
+    "R@10": 0.940828402366864,
+    "NDCG@10": 0.5913019224255992
+  },
+  "recommendation_query_count": 169
+}

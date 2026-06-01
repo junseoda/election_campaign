@@ -46,7 +46,8 @@ body {
 
 button,
 input,
-select {
+select,
+textarea {
   font: inherit;
 }
 
@@ -84,7 +85,8 @@ button {
 }
 
 input,
-select {
+select,
+textarea {
   width: 100%;
   min-height: 48px;
   border: 1px solid var(--border);
@@ -92,6 +94,12 @@ select {
   background: var(--surface);
   color: var(--text-primary);
   padding: 0 14px;
+}
+
+textarea {
+  padding: 13px 14px;
+  line-height: 1.5;
+  resize: vertical;
 }
 
 input[type="checkbox"] {
@@ -209,8 +217,8 @@ input[type="checkbox"] {
   bottom: max(14px, env(safe-area-inset-bottom));
   z-index: 40;
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  width: min(calc(100% - 24px), 430px);
+  grid-template-columns: repeat(auto-fit, minmax(44px, 1fr));
+  width: min(calc(100% - 16px), 620px);
   transform: translateX(-50%);
   border: 1px solid rgba(0, 0, 0, 0.08);
   border-radius: 26px;
@@ -221,13 +229,13 @@ input[type="checkbox"] {
 
 .bottomNav a {
   display: flex;
-  min-height: 66px;
+  min-height: 62px;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 6px;
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 800;
 }
 
@@ -1094,6 +1102,109 @@ input[type="checkbox"] {
   line-height: 1.45;
 }
 
+.routeCoordinatePanel {
+  display: grid;
+  gap: 12px;
+  padding: 18px;
+}
+
+.routeCoordinatePanel h2 {
+  margin: 10px 0 0;
+  font-size: 20px;
+}
+
+.coordinateMetricGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.coordinateMetricGrid span {
+  display: grid;
+  gap: 4px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-soft);
+  padding: 12px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.coordinateMetricGrid strong {
+  color: var(--text-primary);
+  font-size: 22px;
+}
+
+.routeBalanceNotice {
+  margin: 0;
+  border: 1px solid rgba(245, 158, 11, 0.24);
+  border-radius: var(--radius-sm);
+  background: rgba(255, 251, 235, 0.72);
+  color: #92400e;
+  padding: 10px 12px;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.5;
+}
+
+.coordinateIssueDetails {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.68);
+  padding: 12px;
+}
+
+.coordinateIssueDetails summary {
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.coordinateIssueDetails pre {
+  overflow-x: auto;
+  margin: 12px 0 0;
+  border-radius: var(--radius-sm);
+  background: #1f2933;
+  color: #f8fafc;
+  padding: 12px;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.coordinateIssueList {
+  display: grid;
+  gap: 8px;
+  margin: 12px 0 0;
+  padding-left: 20px;
+}
+
+.coordinateIssueList li {
+  padding: 8px 0;
+}
+
+.coordinateIssueList strong,
+.coordinateIssueList span,
+.coordinateIssueList small {
+  display: block;
+}
+
+.coordinateIssueList span,
+.coordinateIssueList small,
+.rawPlaceName,
+.selectedAddress,
+.tableSubText {
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.tableSubText {
+  display: block;
+  margin-top: 4px;
+}
+
 .routeFormCard {
   padding: 20px;
 }
@@ -1395,6 +1506,28 @@ input[type="checkbox"] {
   margin: 2px 0;
 }
 
+.selectedRouteActions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.selectedRouteActions button {
+  min-height: 42px;
+  border: 1px solid rgba(255, 149, 0, 0.2);
+  background: var(--accent-soft);
+  color: var(--accent-deep);
+  padding: 0 10px;
+  font-size: 12px;
+}
+
+.selectedRouteActions button:disabled {
+  border-color: var(--border);
+  background: var(--surface-soft);
+  color: var(--text-tertiary);
+  cursor: not-allowed;
+}
+
 .routeActionPanel {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1413,6 +1546,168 @@ input[type="checkbox"] {
 .routeActionPanel button:first-child {
   background: var(--text-primary);
   color: #fff;
+}
+
+.campaignRouteBuilder {
+  display: grid;
+  gap: 14px;
+}
+
+.campaignRouteBuilder h2 {
+  margin: 4px 0 0;
+  font-size: 22px;
+}
+
+.routeBuilderMetricGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.routeBuilderMetricGrid span {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface-soft);
+  padding: 12px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.routeBuilderMetricGrid strong {
+  color: var(--text-primary);
+  font-size: 17px;
+}
+
+.selectedCampaignRouteList {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.selectedCampaignRouteList li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.8);
+  padding: 10px;
+}
+
+.routeBuilderSelect {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  gap: 2px 10px;
+  min-height: 48px;
+  border-radius: 14px;
+  background: transparent;
+  color: var(--text-primary);
+  padding: 0;
+  text-align: left;
+}
+
+.routeBuilderSelect span {
+  grid-row: 1 / span 2;
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  align-self: center;
+  border-radius: 999px;
+  background: var(--text-primary);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.routeBuilderSelect strong,
+.routeBuilderSelect small {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.routeBuilderSelect small {
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.routeBuilderControls {
+  display: flex;
+  gap: 6px;
+}
+
+.routeBuilderControls button {
+  min-height: 34px;
+  border: 1px solid var(--border);
+  background: var(--surface-soft);
+  color: var(--text-primary);
+  padding: 0 10px;
+  font-size: 12px;
+}
+
+.routeBuilderControls button:disabled {
+  color: var(--text-tertiary);
+  cursor: not-allowed;
+}
+
+.routeExplainabilityPanel {
+  display: grid;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.routeReasonList {
+  display: grid;
+  gap: 7px;
+  margin: 0;
+  padding-left: 18px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.featureScoreGrid {
+  display: grid;
+  gap: 8px;
+}
+
+.featureScoreRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  border: 1px solid var(--border);
+  border-radius: 13px;
+  background: var(--surface-soft);
+  padding: 10px 12px;
+}
+
+.featureScoreRow span,
+.featureScoreRow strong {
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.featureScoreRow small {
+  display: block;
+  margin-top: 2px;
+  color: var(--text-tertiary);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.selectedExplainability {
+  margin-top: 2px;
 }
 
 .routeInsightStrip {
@@ -2508,6 +2803,179 @@ button {
   gap: 8px;
 }
 
+/* Future prediction lab */
+.predictionWarningBanner {
+  position: sticky;
+  top: 12px;
+  z-index: 20;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  align-items: center;
+  margin-bottom: 18px;
+  border: 1px solid rgba(201, 130, 36, 0.24);
+  border-radius: var(--radius-md);
+  background: rgba(255, 244, 229, 0.96);
+  color: var(--accent-deep);
+  padding: 14px 16px;
+  box-shadow: var(--shadow-sm);
+  backdrop-filter: blur(14px);
+}
+
+.predictionWarningBanner strong,
+.predictionWarningBanner span {
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.predictionLabGrid,
+.predictionMapGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(320px, 0.95fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.predictionPanel {
+  display: grid;
+  gap: 16px;
+}
+
+.choiceBlock {
+  display: grid;
+  gap: 9px;
+}
+
+.choiceBlock > span,
+.helperText {
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.choiceGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.choiceGrid button {
+  min-height: 38px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-secondary);
+  padding: 0 13px;
+  font-size: 13px;
+}
+
+.choiceGrid.compact button {
+  min-height: 34px;
+  padding: 0 10px;
+}
+
+.choiceGrid button.active {
+  border-color: rgba(255, 149, 0, 0.34);
+  background: var(--accent-soft);
+  color: var(--accent-deep);
+}
+
+.actualScheduleInput {
+  min-height: 210px;
+  font-family: "SF Mono", "Cascadia Code", Consolas, monospace;
+  font-size: 12.5px;
+}
+
+.responsiveTableWrap {
+  width: 100%;
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+
+.predictionTable {
+  width: 100%;
+  min-width: 940px;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.predictionTable th,
+.predictionTable td {
+  border-bottom: 1px solid var(--border);
+  padding: 12px 14px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.predictionTable th {
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.predictionMetricGrid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.predictionListGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.predictionMetricTile {
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  padding: 16px;
+}
+
+.predictionMetricTile span {
+  display: block;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.predictionMetricTile strong {
+  display: block;
+  margin-top: 8px;
+  font-size: clamp(22px, 2vw, 30px);
+}
+
+.noCoordinateList {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.noCoordinateList li {
+  display: grid;
+  gap: 4px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-soft);
+  padding: 12px;
+}
+
+.noCoordinateList span {
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.noCoordinateList small {
+  color: var(--text-tertiary);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
 /* Kakao map */
 .kakao-map-card {
   position: relative;
@@ -2630,6 +3098,10 @@ button {
 .map-top-right {
   right: 14px;
   top: 14px;
+  max-width: min(340px, calc(100% - 28px));
+  border-radius: 18px;
+  line-height: 1.35;
+  white-space: normal;
 }
 
 .kakao-route-marker {
@@ -2983,6 +3455,12 @@ button {
   }
 }
 
+@media (max-width: 1100px) {
+  .routeBuilderMetricGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 @media (max-width: 760px) {
   .heroHeader h1 {
     font-size: clamp(32px, 10vw, 42px);
@@ -2990,6 +3468,30 @@ button {
 
   .routeOutputGrid {
     grid-template-columns: 1fr;
+  }
+
+  .predictionLabGrid,
+  .predictionMapGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .predictionMetricGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .predictionListGrid,
+  .coordinateMetricGrid,
+  .routeBuilderMetricGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .selectedCampaignRouteList li {
+    grid-template-columns: 1fr;
+  }
+
+  .routeBuilderControls {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .routeOutputGrid .selectedRouteCard {

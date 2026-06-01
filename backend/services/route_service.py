@@ -1631,7 +1631,7 @@ def _build_route(request: RouteRequestData) -> dict[str, Any]:
         if candidate_debug.get("fallback_stage") == "district_fallback_seed":
             warnings.append("선택한 자치구 내 기본 후보를 사용했습니다.")
         elif candidate_debug.get("fallback_stage") == "synthetic_district_fallback":
-            warnings.append("선택한 자치구 내 기본 후보도 부족하여 안전 fallback 후보를 생성했습니다.")
+            warnings.append("선택한 자치구 내 기본 후보도 부족하여 보조 후보를 생성했습니다.")
         elif candidate_debug.get("fallback_stage") == "fill_missing_only":
             warnings.append("선택한 자치구 내 실제 후보를 우선 사용하고 부족한 일정만 기본 후보로 채웠습니다.")
         else:
@@ -1784,7 +1784,7 @@ def _build_route(request: RouteRequestData) -> dict[str, Any]:
     timeline, validation_warnings = validate_recommendation_districts(timeline, selected_request_districts)
     warnings.extend(validation_warnings)
     if timeline and any(item.get("lat") is None or item.get("lng") is None for item in timeline):
-        warnings.append("좌표가 없는 후보는 지도에 권역 기준 위치로 표시되며, 타임라인에는 정상 표시됩니다.")
+        warnings.append("좌표가 없는 후보는 추천 결과와 타임라인에는 유지되며, 지도 marker에서는 제외됩니다.")
     if len(timeline) < request.num_visits:
         warnings.append(
             "Returned "

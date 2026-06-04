@@ -1,0 +1,71 @@
+﻿query_id,gold_place_name,gold_district,gold_place_type,failure_category,diagnosis,best_raw_rank,best_final_rank,recommended_top1,top1_place_type,top1_composite_similarity
+2026-03-10_17:40_중구,황학시장 입구,중구,전통시장,candidate_generation_gap,정답 또는 alias 후보가 raw Top50에 없어 reranking만으로 hit 불가,,,남대문시장,market,0.86384
+2026-03-11_15:10_영등포구,영등포전통시장 남문,영등포구,전통시장,hit,final_proposed Top10 안에서 exact/alias hit 발생,7,4,영등포유통상가,market,0.859058
+2026-03-11_16:20_영등포구,대림중앙시장,영등포구,전통시장,hit,final_proposed Top10 안에서 exact/alias hit 발생,8,5,영등포유통상가,market,0.859058
+2026-03-12_16:00_강서구,방신전통시장,강서구,전통시장,hit,final_proposed Top10 안에서 exact/alias hit 발생,9,9,공항동 먹자골목 골목형상점가,market,0.862723
+2026-03-12_17:25_강서구,남부골목시장,강서구,골목상권,hit,final_proposed Top10 안에서 exact/alias hit 발생,5,5,공항동 먹자골목 골목형상점가,market,0.865842
+2026-03-13_14:10_노원구,상계중앙시장,노원구,전통시장,hit,final_proposed Top10 안에서 exact/alias hit 발생,10,2,공릉동도깨비시장,market,0.862345
+2026-03-13_14:50_노원구,구립수락노인종합복지관,노원구,복지시설,candidate_generation_gap,정답 또는 alias 후보가 raw Top50에 없어 reranking만으로 hit 불가,,,공릉노인복지관,senior_friendly,0.823144
+2026-03-13_15:30_노원구,공릉도깨비시장,노원구,전통시장,candidate_generation_gap,정답 또는 alias 후보가 raw Top50에 없어 reranking만으로 hit 불가,,,공릉동도깨비시장,market,0.862913
+2026-03-16_13:00_구로구,남구로시장,구로구,전통시장,hit,final_proposed Top10 안에서 exact/alias hit 발생,5,2,오류버들시장 골목형상점가,market,0.8714
+2026-03-16_14:00_구로구,궁동종합사회복지관,구로구,복지시설,candidate_generation_gap,정답 또는 alias 후보가 raw Top50에 없어 reranking만으로 hit 불가,,,구로노인종합복지관,senior_friendly,0.827282
+2026-03-17_14:00_마포구,"망원시장, 월드컵시장",마포구,전통시장,hit,final_proposed Top10 안에서 exact/alias hit 발생,8,3,아현시장,market,0.865381
+2026-03-19_10:00_송파구,잠실학생체육관,송파구,체육시설,candidate_generation_gap,정답 또는 alias 후보가 raw Top50에 없어 reranking만으로 hit 불가,,,잠실(송파구청),subway,0.776489
+2026-03-24_17:00_광화문,세종대로 사거리 광화문 광장,광화문,교통거점,candidate_generation_gap,정답 또는 alias 후보가 raw Top50에 없어 reranking만으로 hit 불가,,,서울역,subway,0.5975
+2026-03-24_17:40_종로구,세종마을 음식문화거리,종로구,골목상권,hit,final_proposed Top10 안에서 exact/alias hit 발생,8,8,동대문종합시장,market,0.866696
+2026-03-25_17:20_광진구,중곡제일골목시장,광진구,골목상권,hit,final_proposed Top10 안에서 exact/alias hit 발생,5,3,신성전통시장,market,0.86771
+2026-03-25_18:15_광진구,건대 맛의거리,광진구,골목상권,candidate_generation_gap,정답 또는 alias 후보가 raw Top50에 없어 reranking만으로 hit 불가,,,신성전통시장,market,0.86771
+2026-03-26_16:00_관악구,도림천,관악구,공원,candidate_generation_gap,정답 또는 alias 후보가 raw Top50에 없어 reranking만으로 hit 불가,,,신림,subway,0.779444
+2026-03-26_16:15_관악구,신원시장,관악구,전통시장,hit,final_proposed Top10 안에서 exact/alias hit 발생,7,6,신림별빛거리 골목형상점가,market,0.86401
+2026-03-28_12:50_성동구,응봉산 팔각정,성동구,공원,candidate_generation_gap,정답 또는 alias 후보가 raw Top50에 없어 reranking만으로 hit 불가,,,성수,subway,0.767917
+2026-03-30_11:00_동작구,노량진수산시장,동작구,전통시장,hit,final_proposed Top10 안에서 exact/alias hit 발생,1,1,노량진수산시장골목형상점가,market,0.845849
+2026-03-31_11:30_동대문구,장안동 벚꽃길,동대문구,공원,candidate_generation_gap,정답 또는 alias 후보가 raw Top50에 없어 reranking만으로 hit 불가,,,신림,subway,0.4925
+2026-04-02_16:00_양천구,파리공원,양천구,공원,candidate_generation_gap,정답 또는 alias 후보가 raw Top50에 없어 reranking만으로 hit 불가,,,서울역,subway,0.485
+2026-04-04_10:00_노원구,마들스포츠타운,노원구,체육시설,candidate_generation_gap,정답 또는 alias 후보가 raw Top50에 없어 reranking만으로 hit 불가,,,노원,subway,0.778921
+2026-04-05_17:40_양천구,양재천 수변무대 일대,양천구,공원,candidate_generation_gap,정답 또는 alias 후보가 raw Top50에 없어 reranking만으로 hit 불가,,,서울역,subway,0.5975
+2026-04-06_16:30_강북구,수유시장,강북구,전통시장,hit,final_proposed Top10 안에서 exact/alias hit 발생,10,6,강북북부골목시장,market,0.846963
+2026-04-06_18:00_성북구,성북천 상점가,성북구,골목상권,candidate_generation_gap,정답 또는 alias 후보가 raw Top50에 없어 reranking만으로 hit 불가,,,월곡달빛오거리골목형상점가,market,0.847926
+2026-04-07_15:40_동작구,남성사계시장,동작구,전통시장,hit,final_proposed Top10 안에서 exact/alias hit 발생,5,5,노량진수산시장골목형상점가,market,0.845064
+2026-04-07_16:40_동작구,성대전통시장,동작구,전통시장,hit,final_proposed Top10 안에서 exact/alias hit 발생,4,4,노량진수산시장골목형상점가,market,0.845064
+2026-04-08_17:00_서대문구,영천시장,서대문구,전통시장,hit,final_proposed Top10 안에서 exact/alias hit 발생,9,2,포방터시장,market,0.856273
+2026-04-08_17:55_서대문구,홍제천 인공폭포,서대문구,공원,candidate_generation_gap,정답 또는 alias 후보가 raw Top50에 없어 reranking만으로 hit 불가,,,서울역,subway,0.5975
+2026-04-09_15:00_중랑구,동원시장,중랑구,전통시장,candidate_generation_gap,정답 또는 alias 후보가 raw Top50에 없어 reranking만으로 hit 불가,,,우림골목시장,market,0.846173
+2026-04-09_15:50_중랑구,우림시장,중랑구,전통시장,candidate_generation_gap,정답 또는 alias 후보가 raw Top50에 없어 reranking만으로 hit 불가,,,우림골목시장,market,0.845
+2026-04-15_10:55_종로구,북촌의 봄,종로구,골목상권,candidate_generation_gap,정답 또는 alias 후보가 raw Top50에 없어 reranking만으로 hit 불가,,,동대문종합시장,market,0.826005
+2026-04-17_07:30_송파구,가락몰 농수산물시장,송파구,전통시장,candidate_generation_gap,정답 또는 alias 후보가 raw Top50에 없어 reranking만으로 hit 불가,,,가락몰 골목형상점가,market,0.777907
+2026-04-17_15:30_강동구,명일동 싱크홀 현장,강동구,정책현장,candidate_generation_gap,정답 또는 alias 후보가 raw Top50에 없어 reranking만으로 hit 불가,,,서울역,subway,0.485
+2026-04-17_16:00_강동구,고덕비즈밸리,강동구,정책현장,candidate_generation_gap,정답 또는 alias 후보가 raw Top50에 없어 reranking만으로 hit 불가,,,서울역,subway,0.485
+2026-04-17_16:35_강동구,고덕비즈밸리역 공사현장,강동구,교통거점,candidate_generation_gap,정답 또는 alias 후보가 raw Top50에 없어 reranking만으로 hit 불가,,,서울역,subway,0.485
+2026-04-19_14:40_노원구,불암산철쭉동산,노원구,공원,candidate_generation_gap,정답 또는 alias 후보가 raw Top50에 없어 reranking만으로 hit 불가,,,노원,subway,0.754623
+2026-04-22_18:00_은평구,불광천,은평구,공원,candidate_generation_gap,정답 또는 alias 후보가 raw Top50에 없어 reranking만으로 hit 불가,,,연신내,subway,0.867042
+2026-04-24_14:45_성동구,아지오 성수점,성동구,골목상권,candidate_generation_gap,정답 또는 alias 후보가 raw Top50에 없어 reranking만으로 hit 불가,,,마장축산물시장,market,0.838984
+2026-04-24_16:50_성동구,금남시장,성동구,전통시장,hit,final_proposed Top10 안에서 exact/alias hit 발생,9,5,마장축산물시장,market,0.846731
+2026-04-25_09:00_서초구,잠수대교 남단,서초구,공원,candidate_generation_gap,정답 또는 alias 후보가 raw Top50에 없어 reranking만으로 hit 불가,,,고속터미널,subway,0.863031
+2026-04-25_11:40_중구,남대문시장,중구,전통시장,hit,final_proposed Top10 안에서 exact/alias hit 발생,1,1,남대문시장,market,0.822882
+2026-04-26_11:55_영등포구,광야홈리스복지센터,영등포구,복지시설,candidate_generation_gap,정답 또는 alias 후보가 raw Top50에 없어 reranking만으로 hit 불가,,,구립영등포노인종합복지관,senior_friendly,0.84052
+2026-04-27_10:20_서초구,광수약국,서초구,정책현장,candidate_generation_gap,정답 또는 alias 후보가 raw Top50에 없어 reranking만으로 hit 불가,,,고속터미널,subway,0.761269
+2026-04-27_11:00_서초구,서울고속버스터미널 지하상가,서초구,골목상권,candidate_generation_gap,정답 또는 alias 후보가 raw Top50에 없어 reranking만으로 hit 불가,,,남대문시장,market,0.5575
+2026-04-29_10:50_성북구,장위14주택재개발구역,성북구,재개발/도시개발현장,candidate_generation_gap,정답 또는 alias 후보가 raw Top50에 없어 reranking만으로 hit 불가,,,신림,subway,0.4375
+2026-04-29_12:00_성북구,정릉공영차고지,성북구,교통거점,candidate_generation_gap,정답 또는 alias 후보가 raw Top50에 없어 reranking만으로 hit 불가,,,서울역,subway,0.4775
+2026-04-30_05:00_양천구,신정차량사업소,양천구,노동현장,candidate_generation_gap,정답 또는 alias 후보가 raw Top50에 없어 reranking만으로 hit 불가,,,신림,subway,0.53
+2026-04-30_05:40_양천구,양천공영차고지,양천구,노동현장,candidate_generation_gap,정답 또는 alias 후보가 raw Top50에 없어 reranking만으로 hit 불가,,,양천어르신종합복지관,senior_friendly,0.39831
+2026-04-30_15:00_금천구,금천 현대시장,금천구,전통시장,candidate_generation_gap,정답 또는 alias 후보가 raw Top50에 없어 reranking만으로 hit 불가,,,대명여울빛거리시장,market,0.848763
+2026-05-01_14:00_마포구,여의도공원 10번 출구,마포구,노동현장,candidate_generation_gap,정답 또는 alias 후보가 raw Top50에 없어 reranking만으로 hit 불가,,,홍대입구,subway,0.515655
+2026-05-02_07:00_마포구,마포구 월드컵로 251,마포구,체육시설,candidate_generation_gap,정답 또는 alias 후보가 raw Top50에 없어 reranking만으로 hit 불가,,,월드컵공원,park,0.731421
+2026-05-02_10:00_동대문구,밥퍼나눔운동본부,동대문구,복지시설,candidate_generation_gap,정답 또는 alias 후보가 raw Top50에 없어 reranking만으로 hit 불가,,,서울시립동대문노인종합복지관,senior_friendly,0.843956
+2026-05-03_08:30_용산구,효창운동장,용산구,체육시설,candidate_generation_gap,정답 또는 alias 후보가 raw Top50에 없어 reranking만으로 hit 불가,,,용산,subway,0.812983
+2026-05-04_14:30_영등포구,한국거래소,영등포구,정책현장,candidate_generation_gap,정답 또는 alias 후보가 raw Top50에 없어 reranking만으로 hit 불가,,,영등포,subway,0.749108
+2026-05-05_11:00_광진구,서울어린이대공원,광진구,어린이/가족시설,hit,final_proposed Top10 안에서 exact/alias hit 발생,9,1,어린이대공원,park,0.768805
+2026-05-05_13:00_송파구,잠실종합운동장,송파구,체육시설,candidate_generation_gap,정답 또는 alias 후보가 raw Top50에 없어 reranking만으로 hit 불가,,,장지근린공원,park,0.790307
+2026-05-06_10:40_중구,장충체육관,중구,복지시설,candidate_generation_gap,정답 또는 alias 후보가 raw Top50에 없어 reranking만으로 hit 불가,,,약수노인복지관,senior_friendly,0.839266
+2026-05-07_16:00_송파구,송파 거여새마을지구 공공재개발 현장,송파구,재개발/도시개발현장,candidate_generation_gap,정답 또는 alias 후보가 raw Top50에 없어 reranking만으로 hit 불가,,,잠실(송파구청),subway,0.694818
+2026-05-07_17:00_송파구,새마을전통시장,송파구,전통시장,hit,final_proposed Top10 안에서 exact/alias hit 발생,8,4,가락몰 골목형상점가,market,0.847797
+2026-05-08_15:00_강남구,개포우성7차아파트 1015~105동 사이,강남구,재개발/도시개발현장,candidate_generation_gap,정답 또는 alias 후보가 raw Top50에 없어 reranking만으로 hit 불가,,,강남,subway,0.700927
+2026-05-09_11:45_영등포구,샛강생태공원,영등포구,공원,candidate_generation_gap,정답 또는 alias 후보가 raw Top50에 없어 reranking만으로 hit 불가,,,영등포,subway,0.758196
+2026-05-09_13:30_영등포구,여의도공원 3동 무궁화화장실 앞,영등포구,노동현장,candidate_generation_gap,정답 또는 alias 후보가 raw Top50에 없어 reranking만으로 hit 불가,,,여의도근린공원,park,0.712052
+2026-05-11_10:00_강서구,마곡 LG사이언스파크 ISC동,강서구,정책현장,candidate_generation_gap,정답 또는 alias 후보가 raw Top50에 없어 reranking만으로 hit 불가,,,서울식물원,park,0.398915
+2026-05-14_14:00_중구,투썸플레이스 정동길점,중구,골목상권,candidate_generation_gap,정답 또는 alias 후보가 raw Top50에 없어 reranking만으로 hit 불가,,,남대문시장,market,0.833948
+2026-05-15_14:40_중랑구,먹골역 7번출구 앞,중랑구,공원,candidate_generation_gap,정답 또는 alias 후보가 raw Top50에 없어 reranking만으로 hit 불가,,,서울역,subway,0.485
+2026-05-16_10:00_송파구,잠실실내체육관,송파구,체육시설,candidate_generation_gap,정답 또는 alias 후보가 raw Top50에 없어 reranking만으로 hit 불가,,,장지근린공원,park,0.768593
+2026-05-16_12:30_성동구,성수역 3번출구 앞,성동구,골목상권,candidate_generation_gap,정답 또는 alias 후보가 raw Top50에 없어 reranking만으로 hit 불가,,,마장축산물시장,market,0.844811
+2026-05-16_18:40_종로구,황인재문,종로구,종교시설,candidate_generation_gap,정답 또는 alias 후보가 raw Top50에 없어 reranking만으로 hit 불가,,,동대문종합시장,market,0.481646

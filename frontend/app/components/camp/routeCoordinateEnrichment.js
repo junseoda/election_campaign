@@ -1,5 +1,11 @@
 "use client";
 
+import {
+  DEMO_FALLBACK_COORDINATE_SOURCE,
+  DEMO_FALLBACK_ROUTE_SOURCE,
+  KNOWN_SEOUL_COORDINATE_SOURCE,
+  getKnownRouteCoordinate,
+} from "./demoFallbackRoute";
 import { STATIC_REAL_ROUTE_CANDIDATES } from "./staticRealRouteCandidates";
 
 export const SEOUL_DISTRICTS = [
@@ -46,6 +52,8 @@ const ABSTRACT_PLACE_DISPLAY_NAMES = {
 };
 
 const COORDINATE_STATUS_LABELS = {
+  [DEMO_FALLBACK_COORDINATE_SOURCE]: "Demo Fallback",
+  [KNOWN_SEOUL_COORDINATE_SOURCE]: "Known Seoul Coordinate",
   original: "지도 표시 가능",
   merged_static: "지도 표시 가능",
   cached: "저장된 좌표 사용",
@@ -58,6 +66,8 @@ const COORDINATE_STATUS_LABELS = {
 };
 
 const COORDINATE_STATUS_DETAILS = {
+  [DEMO_FALLBACK_COORDINATE_SOURCE]: "Demo fallback route coordinates are used only for the route/map demo.",
+  [KNOWN_SEOUL_COORDINATE_SOURCE]: "A known Seoul coordinate matched this exact place name.",
   original: "원본 데이터에 포함된 좌표를 사용합니다.",
   merged_static: "검증된 기존 후보 데이터의 좌표를 사용합니다.",
   cached: "이전에 자치구 검증을 통과한 Kakao 좌표를 사용합니다.",
@@ -115,13 +125,22 @@ const FEATURE_REASON_RULES = [
   },
 ];
 
-export const MARKER_COORDINATE_STATUSES = new Set(["original", "merged_static", "cached", "geocoded"]);
+export const MARKER_COORDINATE_STATUSES = new Set([
+  "original",
+  "merged_static",
+  "cached",
+  "geocoded",
+  DEMO_FALLBACK_COORDINATE_SOURCE,
+  KNOWN_SEOUL_COORDINATE_SOURCE,
+]);
 export const MARKER_COORDINATE_SOURCES = new Set([
   "original",
   "static",
   "kakao_address_search",
   "kakao_keyword_search",
   "cache",
+  DEMO_FALLBACK_COORDINATE_SOURCE,
+  KNOWN_SEOUL_COORDINATE_SOURCE,
 ]);
 
 export function normalizeDistrictFromText(value) {
@@ -201,7 +220,19 @@ export function getItemLatLng(item = {}) {
     [item.coord_y, item.coord_x],
     [item.map_position?.lat, item.map_position?.lng],
     [item.coordinates?.lat, item.coordinates?.lng],
+    [item.coordinates?.y, item.coordinates?.x],
     [item.position?.lat, item.position?.lng],
+    [item.position?.y, item.position?.x],
+    [item.geocoded?.lat, item.geocoded?.lng],
+    [item.geocoded?.y, item.geocoded?.x],
+    [item.geocode?.lat, item.geocode?.lng],
+    [item.geocode?.y, item.geocode?.x],
+    [item.address_coordinate?.lat, item.address_coordinate?.lng],
+    [item.address_coordinate?.y, item.address_coordinate?.x],
+    [item.kakao_result?.lat, item.kakao_result?.lng],
+    [item.kakao_result?.y, item.kakao_result?.x],
+    [item.kakao?.lat, item.kakao?.lng],
+    [item.kakao?.y, item.kakao?.x],
   ];
 
   for (const [latValue, lngValue] of sources) {
@@ -390,6 +421,85 @@ function getCandidatePlaceName(item = {}) {
 
 function isFallbackCoordinateCandidate(item = {}) {
   return Boolean(item.is_fallback) || FALLBACK_SOURCE_PATTERN.test(item.source || item.candidate_source || "");
+}
+
+function isDemoFallbackCoordinateCandidate(item = {}) {
+  return Boolean(item.is_demo_fallback_route) ||
+    item.source === DEMO_FALLBACK_ROUTE_SOURCE ||
+    item.candidate_source === DEMO_FALLBACK_ROUTE_SOURCE ||
+    item.coordinate_source === DEMO_FALLBACK_COORDINATE_SOURCE ||
+    item.coordinate_status === DEMO_FALLBACK_COORDINATE_SOURCE ||
+    (item.candidate_source === "static_fallback" && hasValidLatLng(item.lat, item.lng));
+}
+
+function canApplyKnownCoordinate(item = {}) {
+  return isDemoFallbackCoordinateCandidate(item) || !isFallbackCoordinateCandidate(item);
+}
+
+function getNormalizedCoordinatePayload(item = {}, options = {}) {
+  const direct = getItemLatLng(item);
+  if (hasValidLatLng(direct.lat, direct.lng)) {
+    const isDemoFallback = isDemoFallbackCoordinateCandidate(item);
+    return {
+      lat: direct.lat,
+      lng: direct.lng,
+      coordinate_status: item.coordinate_status || (isDemoFallback ? DEMO_FALLBACK_COORDINATE_SOURCE : "original"),
+      coordinate_source: item.coordinate_source || (isDemoFallback ? DEMO_FALLBACK_COORDINATE_SOURCE : "original"),
+      is_demo_fallback_route: Boolean(item.is_demo_fallback_route) || isDemoFallback,
+    };
+  }
+
+  if (options.allowKnownCoordinates === false || !canApplyKnownCoordinate(item)) {
+    return {
+      lat: null,
+      lng: null,
+      coordinate_status: item.coordinate_status || "not_found",
+      coordinate_source: item.coordinate_source || "missing",
+      is_demo_fallback_route: Boolean(item.is_demo_fallback_route),
+    };
+  }
+
+  const known = getKnownRouteCoordinate(item);
+  if (!known || !hasValidLatLng(known.lat, known.lng)) {
+    return {
+      lat: null,
+      lng: null,
+      coordinate_status: item.coordinate_status || "not_found",
+      coordinate_source: item.coordinate_source || "missing",
+      is_demo_fallback_route: Boolean(item.is_demo_fallback_route),
+    };
+  }
+
+  return {
+    lat: Number(known.lat),
+    lng: Number(known.lng),
+    coordinate_status: known.coordinate_status || KNOWN_SEOUL_COORDINATE_SOURCE,
+    coordinate_source: known.coordinate_source || KNOWN_SEOUL_COORDINATE_SOURCE,
+    is_demo_fallback_route: Boolean(item.is_demo_fallback_route) || Boolean(known.is_demo_fallback_route),
+    kakao_place_name: item.kakao_place_name || known.place_name,
+    kakao_address_name: item.kakao_address_name || known.address || "",
+    kakao_road_address_name: item.kakao_road_address_name || known.road_address || "",
+  };
+}
+
+export function normalizeRouteStops(items = [], options = {}) {
+  return (Array.isArray(items) ? items : []).map((item) => {
+    const normalized = getNormalizedCoordinatePayload(item, options);
+    const hasCoordinates = hasValidLatLng(normalized.lat, normalized.lng);
+    return {
+      ...item,
+      ...("kakao_place_name" in normalized ? { kakao_place_name: normalized.kakao_place_name } : {}),
+      ...("kakao_address_name" in normalized ? { kakao_address_name: normalized.kakao_address_name } : {}),
+      ...("kakao_road_address_name" in normalized ? { kakao_road_address_name: normalized.kakao_road_address_name } : {}),
+      lat: hasCoordinates ? normalized.lat : null,
+      lng: hasCoordinates ? normalized.lng : null,
+      has_coordinates: hasCoordinates,
+      coordinate_status: normalized.coordinate_status,
+      coordinate_source: normalized.coordinate_source,
+      is_demo_fallback_route: normalized.is_demo_fallback_route,
+      map_position: hasCoordinates ? { lat: normalized.lat, lng: normalized.lng } : undefined,
+    };
+  });
 }
 
 function buildStaticCoordinateIndex(extraSources = []) {
@@ -799,9 +909,19 @@ export async function enrichRouteItemCoordinates(item = {}, options = {}) {
     };
   }
 
-  if (isFallbackCoordinateCandidate(baseItem)) {
+  const normalizedBase = normalizeRouteStops([baseItem])[0] || baseItem;
+  const existingCoords = getItemLatLng(normalizedBase);
+  if (hasValidLatLng(existingCoords.lat, existingCoords.lng)) {
+    return normalizeCoordinateFields(
+      { ...normalizedBase, lat: existingCoords.lat, lng: existingCoords.lng },
+      normalizedBase.coordinate_status || "original",
+      normalizedBase.coordinate_source || "original"
+    );
+  }
+
+  if (isFallbackCoordinateCandidate(normalizedBase) && !isDemoFallbackCoordinateCandidate(normalizedBase)) {
     return {
-      ...baseItem,
+      ...normalizedBase,
       lat: null,
       lng: null,
       has_coordinates: false,
@@ -812,20 +932,11 @@ export async function enrichRouteItemCoordinates(item = {}, options = {}) {
     };
   }
 
-  const existingCoords = getItemLatLng(baseItem);
-  if (hasValidLatLng(existingCoords.lat, existingCoords.lng)) {
-    return normalizeCoordinateFields(
-      { ...baseItem, lat: existingCoords.lat, lng: existingCoords.lng },
-      "original",
-      "original"
-    );
-  }
-
   const staticIndex = options.staticCoordinateIndex || buildStaticCoordinateIndex(options.coordinateSources);
   const staticMatch = staticIndex.get(`${district}::${normalizePlaceKey(placeName)}`);
   if (staticMatch && hasValidLatLng(staticMatch.lat, staticMatch.lng) && staticMatch.district_normalized === district) {
     return {
-      ...baseItem,
+      ...normalizedBase,
       ...staticMatch,
       has_coordinates: true,
       coordinate_debug: buildCoordinateDebug("static_coordinate_match"),
@@ -833,14 +944,14 @@ export async function enrichRouteItemCoordinates(item = {}, options = {}) {
     };
   }
 
-  const cached = readCoordinateCache(baseItem);
+  const cached = readCoordinateCache(normalizedBase);
   if (
     cached &&
     cached.district_normalized === district &&
     hasValidLatLng(cached.lat, cached.lng)
   ) {
     return {
-      ...baseItem,
+      ...normalizedBase,
       lat: Number(cached.lat),
       lng: Number(cached.lng),
       has_coordinates: true,
@@ -859,7 +970,7 @@ export async function enrichRouteItemCoordinates(item = {}, options = {}) {
   let sdkMissingCount = 0;
   let notFoundCount = 0;
   const attempts = [];
-  const address = String(baseItem.address || baseItem.road_address || "").trim();
+  const address = String(normalizedBase.address || normalizedBase.road_address || "").trim();
   if (!hasMissingAddress(address)) {
     const addressResult = await searchKakaoAddressOrKeyword({
       query: address,
@@ -908,7 +1019,7 @@ export async function enrichRouteItemCoordinates(item = {}, options = {}) {
           ? "address_missing"
           : "not_found";
     return {
-      ...baseItem,
+      ...normalizedBase,
       lat: null,
       lng: null,
       has_coordinates: false,
@@ -930,7 +1041,7 @@ export async function enrichRouteItemCoordinates(item = {}, options = {}) {
   }
 
   const enriched = {
-    ...baseItem,
+    ...normalizedBase,
     lat: Number(kakaoResult.y),
     lng: Number(kakaoResult.x),
     has_coordinates: true,
@@ -977,6 +1088,9 @@ function hasAllowedMarkerCoordinateMeta(item = {}) {
 }
 
 function hasDisallowedMarkerSource(item = {}) {
+  if (isDemoFallbackCoordinateCandidate(item)) {
+    return false;
+  }
   return Boolean(item.is_fallback) ||
     FALLBACK_SOURCE_PATTERN.test(item.source || "") ||
     FALLBACK_SOURCE_PATTERN.test(item.candidate_source || "") ||

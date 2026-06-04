@@ -1,0 +1,3 @@
+﻿candidate_name,query_count,top_place_categories,top_districts,top_time_buckets,top_activity_types,profile_usage,interpretation
+정원오,70,subway:0.326; market:0.174; park:0.174; policy:0.121,영등포구:0.086; 송파구:0.086; 노원구:0.071; 중구:0.057,afternoon:0.414; late_morning:0.229; evening_commute:0.186; lunch:0.086,지역상권방문:0.357; 현장방문:0.257; 방문인사:0.129; 체육행사:0.086,ranking 보조 feature로만 사용; 실제 방문 장소명은 feature에서 제외,"Gold Set의 장소명은 제외하고 유형·자치구·시간대·활동 유형 빈도만 profile화; 골목상권, 생활밀착형 복지·주거·지역 커뮤니티 중심 profile"
+오세훈,0,subway:0.350; market:0.250; urban_site:0.200; policy:0.200,,,,ranking 보조 feature로만 사용; 실제 방문 장소명은 feature에서 제외,"교통거점, 전통시장, 정비·정책 현장 중심의 광역 이동형 profile"

@@ -17,7 +17,7 @@ import {
   fetchJson,
 } from "../components/camp/CampUI";
 
-function QuerySelector({ queries, selectedQueryId, selectedQuery, onChange, isDirty, isLoading }) {
+function QuerySelector({ queries, selectedQueryId, selectedQuery, onChange, onGenerate, isDirty, isLoading }) {
   const chips = [
     selectedQuery?.date,
     selectedQuery?.time,
@@ -29,21 +29,45 @@ function QuerySelector({ queries, selectedQueryId, selectedQuery, onChange, isDi
   return (
     <Card className="querySelectorCard">
       <div className="cardHeaderLine">
-        <label htmlFor="query-select">추천 조건</label>
+        <div>
+          <Tag tone="amber">추천 조건 입력</Tag>
+          <h2>캠페인 상황에 맞는 조건을 선택하세요.</h2>
+        </div>
         {isLoading ? <Tag tone="amber">조건 반영 중</Tag> : isDirty ? <Tag tone="amber">조건 변경됨</Tag> : <Tag tone="green">반영됨</Tag>}
       </div>
-      <select
-        id="query-select"
-        value={selectedQueryId}
-        onChange={(event) => onChange(event.target.value)}
-        aria-label="추천 조건 선택"
+      <form
+        className="recommendConditionForm"
+        onSubmit={(event) => {
+          event.preventDefault();
+          onGenerate?.();
+        }}
       >
-        {queries.map((query) => (
-          <option key={query.query_id} value={query.query_id}>
-            {query.date} {query.time} · {query.district} · {query.place_type}
-          </option>
-        ))}
-      </select>
+        <label>
+          <span>검증 일정</span>
+          <select
+            id="query-select"
+            value={selectedQueryId}
+            onChange={(event) => onChange(event.target.value)}
+            aria-label="추천 조건 선택"
+          >
+            {queries.map((query) => (
+              <option key={query.query_id} value={query.query_id}>
+                {query.date} {query.time} · {query.district} · {query.place_type}
+              </option>
+            ))}
+          </select>
+          <small>실제 후보 공개 일정 Gold Set에서 평가 맥락을 선택합니다.</small>
+        </label>
+        <div className="conditionHelperGrid">
+          <span><strong>지역 조건</strong>{selectedQuery?.district || "자치구 선택"}</span>
+          <span><strong>시간 조건</strong>{selectedQuery?.time || "시간대 확인"}</span>
+          <span><strong>목표 유권자</strong>{selectedQuery?.target_voter_group || "타깃 확인"}</span>
+          <span><strong>장소 유형</strong>{selectedQuery?.place_type || "장소 유형 확인"}</span>
+        </div>
+        <button type="submit" className="wideActionButton" disabled={isLoading || !selectedQueryId}>
+          {isLoading ? "추천 결과 생성 중..." : "추천 결과 생성"}
+        </button>
+      </form>
       <div className="chipRow">
         {chips.map((chip) => <Tag key={chip}>{chip}</Tag>)}
       </div>
@@ -127,7 +151,6 @@ export default function OptimizedDemoPage() {
       setIsLoadingRecommendations(true);
       setErrorMessage("");
       const payload = await fetchJson(`/optimized/recommendations?query_id=${encodeURIComponent(queryId)}&limit=10`);
-      console.log("[Recommend Response Debug]", payload.debug || payload);
       setRecommendationData(payload);
       setIsConditionDirty(false);
     } catch (error) {
@@ -164,9 +187,9 @@ export default function OptimizedDemoPage() {
   return (
     <AppShell active="recommend">
       <HeroHeader
-        eyebrow="최적화 모델"
-        title="유세 장소 추천"
-        description="날짜, 시간, 지역, 장소 유형을 기준으로 후보지를 정렬합니다."
+        eyebrow="Recommendation Workspace"
+        title="단일 유세 장소 추천"
+        description="자치구, 시간대, 목표 유권자 조건을 입력하면 가장 적합한 유세 후보지를 추천합니다."
         meta={
           <div className="topKMeta">
             <span>Top-K</span>
@@ -188,14 +211,15 @@ export default function OptimizedDemoPage() {
       {!isLoadingQueries && !errorMessage ? (
         <div className="recommendationWorkspace">
           <aside className="queryPane">
-            <QuerySelector
-              queries={queries}
-              selectedQueryId={selectedQueryId}
-              selectedQuery={selectedQuery}
-              onChange={handleQueryChange}
-              isDirty={isConditionDirty}
-              isLoading={isLoadingRecommendations}
-            />
+              <QuerySelector
+                queries={queries}
+                selectedQueryId={selectedQueryId}
+                selectedQuery={selectedQuery}
+                onChange={handleQueryChange}
+                onGenerate={() => loadRecommendations(selectedQueryId)}
+                isDirty={isConditionDirty}
+                isLoading={isLoadingRecommendations}
+              />
             <QueryConditionCard query={selectedQuery} coverage={coverage} />
             <section className="metricGrid compactMetrics">
               <MetricCard label="모델" value="최적화 모델" caption="운영 조건 반영" tone="amber" />
@@ -223,8 +247,8 @@ export default function OptimizedDemoPage() {
           <section className="rankingPane">
             <Section
               eyebrow="추천 결과"
-              title="추천 결과"
-              description="1위는 크게, 나머지는 빠르게 비교할 수 있게 정리했습니다."
+              title="선택한 조건에 적합한 유세 후보지"
+              description="추천 점수와 피처 기여도를 함께 확인해 현장 배치 가능성을 판단합니다."
               action={<Tag tone="amber">적합도순</Tag>}
             >
               {isLoadingRecommendations ? <LoadingState title="추천 조건을 반영하고 있어요" lines={2} /> : null}
@@ -241,7 +265,7 @@ export default function OptimizedDemoPage() {
                 </div>
               ) : null}
               {!isLoadingRecommendations && !recommendations.length ? (
-                <EmptyState title="추천 결과가 없습니다" message="추천 결과 CSV를 확인해주세요." />
+                <EmptyState title="조건을 입력하면 추천 결과가 표시됩니다." message="자치구와 시간대를 선택한 뒤 추천 결과를 생성해보세요." />
               ) : null}
             </Section>
           </section>

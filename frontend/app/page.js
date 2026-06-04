@@ -118,14 +118,14 @@ export default function HomeDashboardPage() {
   return (
     <AppShell active="home">
       <HeroHeader
-        eyebrow="AI 기반 선거 운영 비서"
-        title={<>내일 유세 동선을<br />준비합니다</>}
-        description="출발지와 방문 지역을 기준으로 시간대별 유세 장소를 추천합니다."
-        primaryAction={<ButtonLink href="/route">동선 추천받기</ButtonLink>}
+        eyebrow="Campaign Strategy Dashboard"
+        title="서울시 공공데이터 기반 유세 전략 추천 시스템"
+        description="실제 후보 일정과 도시 데이터를 결합해 유세 장소와 하루 동선을 추천하고, 추천 성능을 정량적으로 평가합니다."
+        primaryAction={<ButtonLink href="/recommend">장소 추천 시작</ButtonLink>}
         secondaryAction={
           <>
-            <ButtonLink href="/recommend" variant="secondary">장소 추천 보기</ButtonLink>
-            <ButtonLink href="/evaluation" variant="secondary">추천 품질 보기</ButtonLink>
+            <ButtonLink href="/route" variant="secondary">동선 추천 보기</ButtonLink>
+            <ButtonLink href="/evaluation" variant="secondary">평가 대시보드 보기</ButtonLink>
           </>
         }
         meta={
@@ -145,10 +145,10 @@ export default function HomeDashboardPage() {
       {!isLoading && !errorMessage ? (
         <>
           <section className="metricGrid homeMetrics" aria-label="핵심 실험 지표">
-            <MetricCard label="오늘 추천 일정" value={formatNumber(routeTimeline.length || 5)} caption="시간대별 방문 지점" tone="amber" />
-            <MetricCard label="다음 추천 장소" value={nextRouteItem?.district || "성동구"} caption={nextRouteItem?.place_type || "교통거점"} />
-            <MetricCard label="예상 방문 자치구" value={formatNumber(routeDistricts.length || 2)} caption={routeDistricts.join(", ") || "성동구, 중구"} />
-            <MetricCard label="추천 근거" value="검증 데이터 기반" caption="품질 수치는 평가 대시보드에서 확인" tone="blue" />
+            <MetricCard label="단일 장소 추천" value={formatNumber(recommendationData?.recommendations?.length || 10)} caption="조건별 Top-K 후보지" tone="amber" />
+            <MetricCard label="하루 동선 추천" value={formatNumber(routeTimeline.length || 5)} caption="지도와 타임라인 동시 확인" />
+            <MetricCard label="Gold Set 평가" value={formatNumber(goldTotal)} caption="실제 후보 공개 일정" tone="blue" />
+            <MetricCard label="NDCG@10" value={formatMetric(ndcgAt10)} caption="평가 대시보드에서 재현" tone="green" />
           </section>
 
           <div className="dashboardGrid">
@@ -233,9 +233,35 @@ export default function HomeDashboardPage() {
           </div>
 
           <Section
-            eyebrow="일정 흐름"
-            title="참고 일정 흐름"
-            description="실제 후보 일정의 흐름을 참고합니다."
+            eyebrow="Core Features"
+            title="캠프 전략 회의에 바로 올릴 수 있는 세 가지 화면"
+            description="장소 추천, 하루 동선, 알고리즘 평가를 한 흐름으로 확인합니다."
+          >
+            <div className="featureGrid">
+              <InsightCard
+                eyebrow="단일 장소 추천"
+                title="조건에 맞는 유세 후보지를 빠르게 비교합니다."
+                description="자치구, 시간대, 장소 유형, 타깃 유권자 조건을 기준으로 추천 근거를 함께 제공합니다."
+                tone="blue"
+              />
+              <InsightCard
+                eyebrow="하루 동선 추천"
+                title="지도 marker와 일정 타임라인을 같은 순서로 검토합니다."
+                description="좌표 확보 여부와 방문 순서를 함께 보여주어 실제 일정 확정에 필요한 리스크를 줄입니다."
+                tone="green"
+              />
+              <InsightCard
+                eyebrow="알고리즘 평가"
+                title="Gold Set 기반 성능과 후보군 병목을 분리해 설명합니다."
+                description="Precision@K, Recall@K, NDCG@K, Composite Similarity를 한 대시보드에서 해석합니다."
+              />
+            </div>
+          </Section>
+
+          <Section
+            eyebrow="데이터 기반"
+            title="실제 후보 일정과 공공데이터를 함께 사용합니다"
+            description="추천 결과는 임의로 만든 데모 숫자가 아니라 평가용 Gold Set과 후보군 coverage 분석을 기준으로 해석합니다."
             action={<Tag tone="blue">검증 데이터</Tag>}
           >
             {recentQueries.length ? (

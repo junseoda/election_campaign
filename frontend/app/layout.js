@@ -2,8 +2,8 @@ import "./globals.css";
 
 
 export const metadata = {
-  title: "선거비서 AI",
-  description: "AI 기반 유세 장소와 하루 동선을 추천하는 후보자 운영 앱",
+  title: "Campaign Recommender",
+  description: "서울시 공공데이터와 실제 후보 일정 기반 유세 장소 추천 시스템",
 };
 
 

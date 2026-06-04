@@ -1,16 +1,20 @@
 "use client";
 
 import { DISTRICT_FALLBACK_SEEDS } from "./districtFallbackSeeds";
+import {
+  DEMO_FALLBACK_REQUEST,
+  DEMO_FALLBACK_ROUTE_SOURCE,
+  buildDemoFallbackRoutePayload,
+  hasDemoFallbackDistrict,
+} from "./demoFallbackRoute";
 import { buildRouteFeatureExplanation } from "./routeCoordinateEnrichment";
 import { STATIC_REAL_ROUTE_CANDIDATES } from "./staticRealRouteCandidates";
 
 const NAV_ITEMS = [
-  { key: "home", label: "홈", href: "/", caption: "운영 홈" },
-  { key: "route", label: "동선", href: "/route", caption: "하루 일정" },
-  { key: "future", label: "실험", href: "/future-prediction", caption: "미래 평가" },
-  { key: "recommend", label: "추천", href: "/recommend", caption: "장소 추천" },
-  { key: "map", label: "지도", href: "/map", caption: "동선 미리보기" },
-  { key: "evaluation", label: "평가", href: "/evaluation", caption: "추천 품질 확인" },
+  { key: "home", label: "홈", href: "/", caption: "프로젝트 개요" },
+  { key: "recommend", label: "장소 추천", href: "/recommend", caption: "단일 후보지" },
+  { key: "route", label: "동선 추천", href: "/route", caption: "하루 일정" },
+  { key: "evaluation", label: "평가 대시보드", href: "/evaluation", caption: "Gold Set 검증" },
 ];
 
 const ACTIVITY_BY_TYPE = {
@@ -42,6 +46,9 @@ const FALLBACK_SOURCES = new Set(["district_fallback_seed", "synthetic_district_
 const SOURCE_PRIORITY = {
   backend_api: 1,
   route_candidate_pool: 1,
+  [DEMO_FALLBACK_ROUTE_SOURCE]: 3,
+  demo_fallback_static: 3,
+  static_fallback: 3,
   market_csv: 2,
   park_csv: 2,
   subway_csv: 2,
@@ -213,7 +220,7 @@ function isLocalApiUrl(apiBaseUrl) {
 }
 
 function shouldUseStaticFallback(apiBaseUrl) {
-  return !apiBaseUrl || isLocalApiUrl(apiBaseUrl);
+  return !apiBaseUrl;
 }
 
 async function loadStaticData(fileName) {
@@ -594,8 +601,8 @@ function normalizeStaticRealRouteCandidate(item = {}, index = 0, source = "front
   if (!district || !placeName) {
     return null;
   }
-  const lat = item.lat ?? item.latitude ?? item.map_position?.lat ?? null;
-  const lng = item.lng ?? item.longitude ?? item.map_position?.lng ?? null;
+  const lat = item.lat ?? item.latitude ?? item.y ?? item.coord_y ?? item.map_position?.lat ?? null;
+  const lng = item.lng ?? item.longitude ?? item.x ?? item.coord_x ?? item.map_position?.lng ?? null;
   const normalizedSource = FALLBACK_SOURCES.has(item.source) || item.candidate_source === "static_fallback"
     ? source
     : getCandidateSource({ ...item, source });
@@ -1001,28 +1008,30 @@ async function getRouteFallback(path, body) {
   }
 
   if (url.pathname === "/route/options") {
-    return withStaticMeta(cloneStaticPayload(data.route_options || STATIC_ROUTE_OPTIONS));
+    const routeOptions = cloneStaticPayload(data.route_options || STATIC_ROUTE_OPTIONS);
+    return withStaticMeta({
+      ...routeOptions,
+      default_request: {
+        ...(routeOptions.default_request || {}),
+        ...DEMO_FALLBACK_REQUEST,
+      },
+    });
   }
 
   if (url.pathname === "/route/sample") {
     const defaultRequest = data.route_options?.default_request || STATIC_ROUTE_OPTIONS.default_request;
-    const route = cloneStaticPayload(data.sample_route || buildStaticRouteShell(defaultRequest));
-    const request = route.request || defaultRequest;
-    const sample = ensureDistrictSafeRoutePayload(
-      {
-        ...route,
-        debug: {
-          ...(route.debug || {}),
-          source: "frontend_static_json",
-        },
-      },
-      request
-    );
-    return withStaticMeta(sample);
+    return withStaticMeta(buildDemoFallbackRoutePayload({
+      ...(defaultRequest || {}),
+      ...DEMO_FALLBACK_REQUEST,
+    }));
   }
 
   if (url.pathname === "/route/recommend") {
     const request = parseRequestBody(body);
+    const requestedDistrictsForDemo = request.districts || request.district || request.selectedDistricts || request.selected_districts || [];
+    if (hasDemoFallbackDistrict(requestedDistrictsForDemo)) {
+      return withStaticMeta(buildDemoFallbackRoutePayload(request));
+    }
     const route = cloneStaticPayload(data.sample_route || buildStaticRouteShell(request));
     const requestedVisits = Number(request.num_visits) || route.timeline?.length || 5;
     const requestedDistricts = request.districts || request.district || request.selectedDistricts || request.selected_districts || [];
@@ -1155,6 +1164,7 @@ export async function fetchJson(path, options = {}) {
   const requestPathname = getRequestUrl(path).pathname;
   const requestMethod = String(options.method || "GET").toUpperCase();
   const shouldPreferStaticSnapshot =
+    !apiBaseUrl &&
     requestMethod === "GET" &&
     (
       requestPathname.startsWith("/optimized/") ||
@@ -1254,23 +1264,23 @@ export async function postJson(path, payload) {
 export function AppShell({ active = "home", children }) {
   return (
     <main className="appShell">
-      <aside className="desktopSidebar" aria-label="선거비서 AI 데스크톱 내비게이션">
-        <a href="/" className="brandLockup" aria-label="선거비서 AI 홈">
-          <span className="brandMark">AI</span>
+      <header className="appTopbar" aria-label="Campaign Recommender 내비게이션">
+        <a href="/" className="brandLockup" aria-label="Campaign Recommender 홈">
+          <span className="brandMark">CR</span>
           <span>
-            <strong>선거비서 AI</strong>
-            <small>현장 운영 보조</small>
+            <strong>Campaign Recommender</strong>
+            <small>서울시 공공데이터 기반 유세 전략 추천 시스템</small>
           </span>
         </a>
-        <nav className="sidebarNav">
+        <nav className="topbarNav" aria-label="주요 메뉴">
           {NAV_ITEMS.map((item) => (
             <a key={item.key} href={item.href} className={active === item.key ? "active" : ""}>
               <span>{item.label}</span>
-              <small>{item.caption}</small>
             </a>
           ))}
         </nav>
-      </aside>
+        <span className="appStatusBadge">Evaluation Ready</span>
+      </header>
       <div className="appContent">{children}</div>
       <BottomNavigation active={active} />
     </main>
@@ -1391,10 +1401,11 @@ export function InsightCard({ eyebrow = "Insight", title, description, tone = "a
   );
 }
 
-export function LoadingState({ title = "추천 데이터를 준비하고 있어요", lines = 3 }) {
+export function LoadingState({ title = "추천 결과를 생성하는 중입니다.", lines = 3 }) {
   return (
     <div className="statePanel" role="status" aria-live="polite">
       <strong>{title}</strong>
+      <p>후보 장소와 시간대 적합도를 분석하고 있습니다.</p>
       <div className="skeletonStack">
         {Array.from({ length: lines }).map((_, index) => (
           <span key={index} />
@@ -1404,21 +1415,21 @@ export function LoadingState({ title = "추천 데이터를 준비하고 있어�
   );
 }
 
-export function ErrorState({ title = "데이터를 불러오지 못했습니다", message, onRetry }) {
+export function ErrorState({ title = "추천 결과를 불러오지 못했습니다.", message, onRetry }) {
   return (
     <div className="statePanel error" role="alert">
       <strong>{title}</strong>
-      <p>{message || STATIC_DEMO_MESSAGE}</p>
+      <p>{message || "잠시 후 다시 시도하거나 조건을 변경해보세요."}</p>
       {onRetry ? (
         <button type="button" onClick={onRetry}>
-          다시 시도
+          재시도
         </button>
       ) : null}
     </div>
   );
 }
 
-export function EmptyState({ title = "표시할 데이터가 없습니다", message }) {
+export function EmptyState({ title = "아직 추천 조건이 입력되지 않았습니다.", message }) {
   return (
     <div className="statePanel empty">
       <strong>{title}</strong>
@@ -1720,6 +1731,43 @@ function getReasonBadges(item, query) {
   return badges.length ? badges.slice(0, 4) : ["기본 점수 우수", "운영 동선 배치 가능"];
 }
 
+function getRecommendationPills(item, query) {
+  const pills = [];
+  const placeType = getPlaceTypeLabel(item?.recommended_place_type || query?.place_type);
+  const target = query?.target_voter_group || "";
+  if (Number(item?.time_bonus) > 0) {
+    pills.push("시간대 적합");
+  }
+  if (/교통|역|subway|station/i.test(String(placeType))) {
+    pills.push("역세권");
+  }
+  if (/시장|상권|market|commercial/i.test(String(placeType))) {
+    pills.push("상권 밀집");
+  }
+  if (target) {
+    pills.push(`${target} 접촉 가능`);
+  }
+  if (Number(item?.context_bonus) > 0) {
+    pills.push("현장 맥락 반영");
+  }
+  return [...new Set(pills)].slice(0, 5);
+}
+
+function getRecommendationFeatureRows(item = {}) {
+  const rows = RECOMMEND_SCORE_ROWS
+    .map(([key, label]) => ({
+      key,
+      label,
+      value: Number(item?.[key]) || 0,
+    }))
+    .filter((row) => row.value > 0);
+  const maxValue = Math.max(...rows.map((row) => row.value), 0.01);
+  return rows.slice(0, 6).map((row) => ({
+    ...row,
+    width: Math.max(8, Math.min(100, (row.value / maxValue) * 100)),
+  }));
+}
+
 export function buildRecommendationReason(item, query) {
   if (!item) {
     return "추천 결과가 없습니다.";
@@ -1746,32 +1794,86 @@ export function buildRecommendationReason(item, query) {
     fragments.push("기본 점수가 안정적인 후보지");
   }
 
-  return `${fragments.slice(0, 2).join(" · ")}. 현장 일정에 배치하기 좋은 후보입니다.`;
+  return `${fragments.slice(0, 2).join(" · ")}. 자치구, 시간대, 장소 유형, 유권자 접촉 가능성을 종합했을 때 현장 일정에 배치하기 좋은 후보지입니다.`;
+}
+
+function getRecommendationAddressText(item) {
+  const explicitAddress =
+    item?.address ||
+    item?.recommended_address ||
+    item?.road_address ||
+    item?.place_address ||
+    item?.location;
+  if (explicitAddress) {
+    return explicitAddress;
+  }
+
+  const district = item?.recommended_district || item?.district;
+  const placeName = item?.recommended_place_name || item?.place_name;
+  if (district && placeName) {
+    const areaSuffix = /(일대|인근)$/.test(placeName) ? "" : " 일대";
+    return `서울특별시 ${district} ${placeName}${areaSuffix}`;
+  }
+
+  return "주소 확인 필요";
 }
 
 export function RecommendationCard({ item, query, featured = false }) {
   const reason = buildRecommendationReason(item, query);
   const badges = getReasonBadges(item, query);
+  const pills = getRecommendationPills(item, query);
+  const featureRows = getRecommendationFeatureRows(item);
   const placeType = getPlaceTypeLabel(item?.recommended_place_type);
+  const addressText = getRecommendationAddressText(item);
   const mapHref = `/map?place=${encodeURIComponent(item?.recommended_place_name || "")}&district=${encodeURIComponent(item?.recommended_district || "")}`;
+  const score = item?.final_variant_score ?? item?.score;
+  const scorePercent = Math.max(6, Math.min(100, (Number(score) || 0) * 25));
 
   return (
     <Card className={`recommendationCard ${featured ? "featured" : ""}`}>
       <div className="recommendationHeader">
-        <span className="rankBadge">{item?.rank || "-"}</span>
+        <span className="rankBadge">#{item?.rank || "-"}</span>
         <div>
           {featured ? <Tag tone="amber">최우선 추천</Tag> : null}
           <h3>{item?.recommended_place_name || "추천 장소 없음"}</h3>
           <p>{item?.recommended_district || "자치구 확인"} · {placeType}</p>
+          <p className="recommendationAddressLine">
+            <span>주소/위치</span>
+            {addressText}
+          </p>
         </div>
-        <span className="scorePill">{getFitLabel(item?.score)}</span>
+        <span className="scorePill">{getFitLabel(score)}</span>
       </div>
       <div className="reasonBadgeRow">
         {badges.map((badge) => (
           <Tag key={badge} tone="amber">{badge}</Tag>
         ))}
+        <Tag tone="blue">{placeType}</Tag>
       </div>
       {featured ? <p className="recommendUseText">추천 활용: {reason}</p> : <p className="reasonText">{reason}</p>}
+      <div className="suitabilityMeter" aria-label="추천 적합도">
+        <div>
+          <span>추천 점수</span>
+          <strong>{formatMetric(score, 3)}</strong>
+        </div>
+        <i><b style={{ width: `${scorePercent}%` }} /></i>
+      </div>
+      {featureRows.length ? (
+        <div className="featureContributionList" aria-label="feature contribution list">
+          {featureRows.map((row) => (
+            <div key={row.key}>
+              <span>{row.label}</span>
+              <i><b style={{ width: `${row.width}%` }} /></i>
+              <strong>{formatMetric(row.value, 3)}</strong>
+            </div>
+          ))}
+        </div>
+      ) : null}
+      {pills.length ? (
+        <div className="reasonBadgeRow compact">
+          {pills.map((pill) => <Tag key={pill}>{pill}</Tag>)}
+        </div>
+      ) : null}
       <div className="cardActionRow">
         <a className="buttonLink secondary compactButton" href={mapHref}>지도에서 보기</a>
         <details className="scoreDetails">
@@ -1824,8 +1926,9 @@ export function MiniChart({ rows = [], metric = "NDCG@10", highlight = "optimize
     <div className="miniChart">
       {rows.map((row) => {
         const value = Number(row[metric]) || 0;
+        const isActive = row.model_name === highlight || (highlight === "final_proposed" && row.model_name === "optimized_proposed");
         return (
-          <div key={`${row.model_name}-${metric}`} className={row.model_name === highlight ? "active" : ""}>
+          <div key={`${row.model_name}-${metric}`} className={isActive ? "active" : ""}>
             <div>
               <strong>{row.model_name}</strong>
               <span>{formatMetric(value)}</span>

@@ -369,6 +369,82 @@ function getCoordSummary(stops = []) {
   }, { valid: 0, invalid: 0, bySource: {} });
 }
 
+function getFallbackBounds(stops = []) {
+  const validStops = stops.filter((stop) => getValidMapCoord(stop.lat, stop.lng));
+  if (!validStops.length) {
+    return null;
+  }
+
+  const lats = validStops.map((stop) => Number(stop.lat));
+  const lngs = validStops.map((stop) => Number(stop.lng));
+  const minLat = Math.min(...lats);
+  const maxLat = Math.max(...lats);
+  const minLng = Math.min(...lngs);
+  const maxLng = Math.max(...lngs);
+  return {
+    minLat,
+    maxLat,
+    minLng,
+    maxLng,
+    latSpan: Math.max(0.004, maxLat - minLat),
+    lngSpan: Math.max(0.004, maxLng - minLng),
+  };
+}
+
+function getFallbackMarkerStyle(stop, bounds) {
+  if (!bounds || !getValidMapCoord(stop.lat, stop.lng)) {
+    return { left: "50%", top: "50%" };
+  }
+
+  const left = 12 + ((Number(stop.lng) - bounds.minLng) / bounds.lngSpan) * 76;
+  const top = 88 - ((Number(stop.lat) - bounds.minLat) / bounds.latSpan) * 76;
+  return {
+    left: `${Math.max(8, Math.min(92, left))}%`,
+    top: `${Math.max(8, Math.min(92, top))}%`,
+  };
+}
+
+function StaticFallbackMarkerPreview({ stops = [], selectedStop, onSelectStop }) {
+  const bounds = getFallbackBounds(stops);
+  if (!stops.length || !bounds) {
+    return null;
+  }
+
+  return (
+    <div className="staticFallbackMapCanvas" data-static-route-map="true">
+      <div className="staticFallbackRouteLine" aria-hidden="true" />
+      {stops.map((stop) => (
+        <button
+          type="button"
+          key={stop.id}
+          className={`kakao-route-marker ${selectedStop?.id === stop.id ? "selected" : ""}`}
+          data-route-item-id={stop.route_item_id || stop.id}
+          data-route-order={stop.sequence}
+          data-place-name={stop.place_name}
+          data-district-normalized={stop.district_normalized || stop.district || ""}
+          style={getFallbackMarkerStyle(stop, bounds)}
+          onClick={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            onSelectStop?.(stop.id);
+          }}
+        >
+          <span>{stop.sequence}</span>
+        </button>
+      ))}
+      {selectedStop ? (
+        <div className="map-floating-card staticFallbackInfo">
+          <div>
+            <span className="map-badge">{selectedStop.sequence} · {selectedStop.time || "time pending"}</span>
+          </div>
+          <strong>{selectedStop.place_name}</strong>
+          <p>{selectedStop.district || "Seoul"} · {selectedStop.place_type}</p>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function fitMapToStops(kakao, map, stops, compact) {
   forceRoadmap(kakao, map);
   map.relayout();
@@ -585,6 +661,11 @@ function MapFallback({
           {totalStopCount > 0 ? <span>전체 {totalStopCount}곳 · 지도 {stops.length}곳</span> : null}
           {noCoordinateCount > 0 ? <span>좌표 확인 필요 {noCoordinateCount}개</span> : null}
         </div>
+        <StaticFallbackMarkerPreview
+          stops={stops}
+          selectedStop={selectedStop}
+          onSelectStop={onSelectStop}
+        />
         <div className="fallbackRouteList">
           {stops.length ? stops.map((stop) => (
             <button

@@ -25,7 +25,9 @@ REPOSITORY_ROOT = BACKEND_ROOT.parent
 
 
 def _resolve_data_root() -> Path:
-    for candidate in (BACKEND_ROOT, REPOSITORY_ROOT):
+    if (REPOSITORY_ROOT / "output" / "final_ranking_model_comparison.csv").exists():
+        return REPOSITORY_ROOT
+    for candidate in (REPOSITORY_ROOT, BACKEND_ROOT):
         if (candidate / "output").exists():
             return candidate
     return BACKEND_ROOT
@@ -60,6 +62,14 @@ HIT_ANALYSIS_PATH = (
     / "optimized_proposed"
     / "hit_analysis.csv"
 )
+FINAL_MODEL_COMPARISON_PATH = PROJECT_ROOT / "output" / "final_ranking_model_comparison.csv"
+FINAL_SIMILARITY_PATH = PROJECT_ROOT / "output" / "final_similarity_evaluation.csv"
+FINAL_BEST_WEIGHTS_PATH = PROJECT_ROOT / "output" / "final_best_weights.json"
+FINAL_CANDIDATE_COVERAGE_PATH = PROJECT_ROOT / "output" / "final_candidate_coverage_analysis.csv"
+FINAL_CANDIDATE_PROFILE_PATH = PROJECT_ROOT / "output" / "final_candidate_profile_analysis.csv"
+FINAL_FAILURE_CASE_PATH = PROJECT_ROOT / "output" / "final_failure_case_analysis.csv"
+FINAL_EXPLAINABILITY_PATH = PROJECT_ROOT / "output" / "final_explainability_samples.csv"
+FINAL_SUMMARY_PATH = PROJECT_ROOT / "output" / "final_evaluation_summary.md"
 CANDIDATE_DIAGNOSIS_PATH = (
     PROJECT_ROOT / "output" / "experiments_optimized" / "candidate_generation_diagnosis.csv"
 )
@@ -89,6 +99,19 @@ def _read_json(path: Path) -> dict[str, Any]:
         return json.load(file)
 
 
+def _read_optional_csv(path: Path) -> pd.DataFrame:
+    if not path.exists():
+        return pd.DataFrame()
+    return pd.read_csv(path, encoding="utf-8-sig")
+
+
+def _read_optional_json(path: Path) -> dict[str, Any]:
+    if not path.exists():
+        return {}
+    with path.open("r", encoding="utf-8") as file:
+        return json.load(file)
+
+
 def _records(dataframe: pd.DataFrame, limit: int | None = None) -> list[dict[str, Any]]:
     if limit is not None:
         dataframe = dataframe.head(max(int(limit), 0))
@@ -99,6 +122,36 @@ def _records(dataframe: pd.DataFrame, limit: int | None = None) -> list[dict[str
 
 def _source(path: Path) -> str:
     return str(path.relative_to(PROJECT_ROOT)).replace("\\", "/")
+
+
+def _optional_source(path: Path) -> str | None:
+    return _source(path) if path.exists() else None
+
+
+def _similarity_summary(similarity: pd.DataFrame) -> dict[str, Any]:
+    if similarity.empty:
+        return {}
+    top10 = similarity[pd.to_numeric(similarity.get("rank"), errors="coerce").fillna(999).le(10)].copy()
+    if top10.empty:
+        top10 = similarity.copy()
+    metric_columns = [
+        "district_match",
+        "place_type_match",
+        "time_context_match",
+        "campaign_context_match",
+        "voter_target_match",
+        "semantic_similarity",
+        "composite_similarity",
+    ]
+    summary = {
+        column: float(pd.to_numeric(top10[column], errors="coerce").fillna(0.0).mean())
+        for column in metric_columns
+        if column in top10.columns
+    }
+    if "exact_place_hit" in top10.columns:
+        summary["exact_place_hit_rate"] = float(top10["exact_place_hit"].fillna(False).astype(bool).mean())
+    summary["evaluated_recommendation_count"] = int(len(top10))
+    return summary
 
 
 def get_gold_queries(limit: int | None = None) -> dict[str, Any]:
@@ -204,13 +257,22 @@ def get_evaluation_dashboard() -> dict[str, Any]:
     feature_contribution = _read_csv(FEATURE_CONTRIBUTION_PATH)
     best_weights = _read_json(BEST_WEIGHTS_PATH)
     gold_summary = _read_json(GOLD_SUMMARY_PATH)
+    final_comparison = _read_optional_csv(FINAL_MODEL_COMPARISON_PATH)
+    final_similarity = _read_optional_csv(FINAL_SIMILARITY_PATH)
+    final_best_weights = _read_optional_json(FINAL_BEST_WEIGHTS_PATH)
+    final_profile = _read_optional_csv(FINAL_CANDIDATE_PROFILE_PATH)
+    final_failures = _read_optional_csv(FINAL_FAILURE_CASE_PATH)
+    final_explainability = _read_optional_csv(FINAL_EXPLAINABILITY_PATH)
 
     split_summaries: dict[str, list[dict[str, Any]]] = {}
     for split_name in ["train", "validation", "full"]:
         split_path = SPLIT_EVALUATION_DIR / f"{split_name}_result_summary.csv"
         split_summaries[split_name] = _records(_read_csv(split_path))
 
-    optimized_row = comparison[comparison["model_name"] == "optimized_proposed"]
+    display_comparison = final_comparison if not final_comparison.empty else comparison
+    optimized_row = display_comparison[display_comparison["model_name"] == "final_proposed"]
+    if optimized_row.empty:
+        optimized_row = display_comparison[display_comparison["model_name"] == "optimized_proposed"]
     optimized_metrics = _records(optimized_row)[0] if not optimized_row.empty else {}
 
     return {
@@ -219,10 +281,24 @@ def get_evaluation_dashboard() -> dict[str, Any]:
             "best_weights": _source(BEST_WEIGHTS_PATH),
             "gold_summary": _source(GOLD_SUMMARY_PATH),
             "feature_contribution": _source(FEATURE_CONTRIBUTION_PATH),
+            "final_model_comparison": _optional_source(FINAL_MODEL_COMPARISON_PATH),
+            "final_similarity": _optional_source(FINAL_SIMILARITY_PATH),
+            "final_best_weights": _optional_source(FINAL_BEST_WEIGHTS_PATH),
+            "final_candidate_profile": _optional_source(FINAL_CANDIDATE_PROFILE_PATH),
+            "final_failure_cases": _optional_source(FINAL_FAILURE_CASE_PATH),
+            "final_summary": _optional_source(FINAL_SUMMARY_PATH),
         },
-        "model_comparison": _records(comparison),
+        "model_comparison": _records(display_comparison),
+        "legacy_model_comparison": _records(comparison),
+        "final_model_comparison": _records(final_comparison),
         "optimized_metrics": optimized_metrics,
         "best_weights": best_weights,
+        "final_best_weights": final_best_weights,
+        "final_similarity_summary": _similarity_summary(final_similarity),
+        "final_similarity_samples": _records(final_similarity, limit=20),
+        "final_candidate_profile": _records(final_profile),
+        "final_failure_cases": _records(final_failures, limit=25),
+        "final_explainability_samples": _records(final_explainability, limit=20),
         "gold_summary": gold_summary,
         "split_summaries": split_summaries,
         "feature_contribution": _records(feature_contribution),

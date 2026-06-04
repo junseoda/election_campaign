@@ -33,11 +33,17 @@ import {
   getCoordinateStatusLabel,
   isMarkerEligible,
   normalizePlaceName,
+  normalizeRouteStops,
 } from "../components/camp/routeCoordinateEnrichment";
 import KakaoRouteMap from "../components/map/KakaoRouteMap";
 
 const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
 const SAVED_STOPS_KEY = "campaign-route-saved-stops";
+const CANDIDATE_PROFILES = [
+  { value: "ohsehoon", label: "오세훈", note: "교통거점·정책현장 중심" },
+  { value: "jungwono", label: "정원오", note: "상권·생활밀착 현장 중심" },
+  { value: "general", label: "일반 후보", note: "균형형 캠페인 운영" },
+];
 
 function getDayLabel(dateValue) {
   const parsed = new Date(`${dateValue}T00:00:00`);
@@ -57,11 +63,27 @@ function toggleArrayValue(values, value) {
 function normalizeRequest(form) {
   return {
     ...form,
+    candidate_profile: form.candidate_profile || "general",
     num_visits: Number(form.num_visits) || 5,
     districts: form.districts || [],
     preferred_place_types: form.preferred_place_types || [],
     avoid_duplicates: Boolean(form.avoid_duplicates),
   };
+}
+
+function getRouteCharacter(timeline = [], summary = {}) {
+  const campaignGoal = String(summary.campaign_goal || "").toLowerCase();
+  const placeTypes = timeline.map((item) => String(item.place_type || "").toLowerCase());
+  if (campaignGoal.includes("출근") || campaignGoal.includes("퇴근") || placeTypes.some((type) => type.includes("교통") || type.includes("subway"))) {
+    return "출퇴근 인사 중심";
+  }
+  if (placeTypes.some((type) => type.includes("시장") || type.includes("상권") || type.includes("market"))) {
+    return "시장·상권 밀착형";
+  }
+  if (placeTypes.some((type) => type.includes("정책") || type.includes("복지") || type.includes("policy") || type.includes("welfare"))) {
+    return "정책현장 방문형";
+  }
+  return "생활권 순회형";
 }
 
 function firstValue(...values) {
@@ -265,7 +287,7 @@ function normalizeRouteStop(item = {}, index = 0) {
 }
 
 function normalizeRouteTimeline(items = []) {
-  return items.map(normalizeRouteStop);
+  return normalizeRouteStops(items.map(normalizeRouteStop));
 }
 
 function buildRouteMarkers(timeline = []) {
@@ -305,6 +327,18 @@ function normalizeRoutePayload(payload = {}, request = {}, previousRoute = null)
     timeline,
     insights: Array.isArray(payload.insights) ? payload.insights : previousRoute?.insights || [],
   };
+}
+
+function getRouteDataMode(route = {}) {
+  const source = String(route?.debug?.source || route?.source || "").toLowerCase();
+  if (route?.static_fallback || route?.demo_fallback || /static|fallback|frontend_static_json/.test(source)) {
+    return "Demo Fallback";
+  }
+  return "Live API";
+}
+
+function getRouteDataModeTone(mode) {
+  return mode === "Live API" ? "green" : "blue";
 }
 
 function debugRoute(message, details = {}) {
@@ -424,18 +458,28 @@ function RouteForm({ form, options, onChange, onToggleArray, onSubmit, isSubmitt
     <Card className="routeFormCard">
       <div className="cardHeaderLine">
         <div>
-          <Tag tone="amber">동선 조건</Tag>
-          <h2>하루 유세 조건</h2>
+          <Tag tone="amber">동선 조건 설정</Tag>
+          <h2>후보자의 하루 일정을 확정합니다</h2>
         </div>
         <Tag tone="blue">{getDayLabel(form.date)}요일</Tag>
       </div>
       <form onSubmit={onSubmit} className="routeForm">
         <details className="routeFormSection" open>
           <summary>기본 일정</summary>
+          <label>
+            <span>후보자 profile</span>
+            <select value={form.candidate_profile || "general"} onChange={(event) => onChange("candidate_profile", event.target.value)}>
+              {CANDIDATE_PROFILES.map((profile) => (
+                <option key={profile.value} value={profile.value}>{profile.label} · {profile.note}</option>
+              ))}
+            </select>
+            <small className="fieldHelper">후보자의 공개 일정 성향을 보조 feature로만 사용하고, 실제 장소명은 평가 feature에서 제외합니다.</small>
+          </label>
           <div className="formGrid two">
             <label>
               <span>날짜</span>
               <input type="date" value={form.date} onChange={(event) => onChange("date", event.target.value)} required />
+              <small className="fieldHelper">시연할 하루 유세 일정을 선택합니다.</small>
             </label>
             <label>
               <span>방문 지점</span>
@@ -444,16 +488,19 @@ function RouteForm({ form, options, onChange, onToggleArray, onSubmit, isSubmitt
                   <option key={value} value={value}>{value}곳</option>
                 ))}
               </select>
+              <small className="fieldHelper">지도와 타임라인에 표시할 추천 개수입니다.</small>
             </label>
           </div>
           <div className="formGrid two">
             <label>
               <span>시작 시간</span>
               <input type="time" value={form.start_time} onChange={(event) => onChange("start_time", event.target.value)} required />
+              <small className="fieldHelper">출근, 점심, 오후, 퇴근 시간대에 따라 후보지가 달라집니다.</small>
             </label>
             <label>
               <span>종료 시간</span>
               <input type="time" value={form.end_time} onChange={(event) => onChange("end_time", event.target.value)} required />
+              <small className="fieldHelper">하루 캠페인 운영 가능 시간을 제한합니다.</small>
             </label>
           </div>
           <label>
@@ -465,6 +512,7 @@ function RouteForm({ form, options, onChange, onToggleArray, onSubmit, isSubmitt
               placeholder="예: 성동구청, 왕십리역, 서울시청"
               required
             />
+            <small className="fieldHelper">후보자 이동 시작점을 입력하면 거리와 순서 판단에 반영됩니다.</small>
           </label>
         </details>
 
@@ -472,6 +520,7 @@ function RouteForm({ form, options, onChange, onToggleArray, onSubmit, isSubmitt
           <summary>방문 지역</summary>
           <fieldset>
             <legend>희망 자치구</legend>
+            <small className="fieldHelper">방문을 원하는 서울시 자치구를 하나 이상 선택하세요.</small>
             <div className="chipSelectGrid">
               {districts.map((district) => (
                 <button
@@ -497,6 +546,7 @@ function RouteForm({ form, options, onChange, onToggleArray, onSubmit, isSubmitt
                   <option key={group} value={group}>{group}</option>
                 ))}
               </select>
+              <small className="fieldHelper">청년, 직장인, 상인, 가족, 노년층 등 접촉 대상을 선택하세요.</small>
             </label>
             <label>
               <span>목적</span>
@@ -505,10 +555,12 @@ function RouteForm({ form, options, onChange, onToggleArray, onSubmit, isSubmitt
                   <option key={goal} value={goal}>{goal}</option>
                 ))}
               </select>
+              <small className="fieldHelper">출근 인사, 시장 방문, 정책 현장 등 캠페인 목적입니다.</small>
             </label>
           </div>
           <fieldset>
             <legend>선호 장소</legend>
+            <small className="fieldHelper">유세 메시지와 맞는 장소 유형을 선택하세요.</small>
             <div className="chipSelectGrid">
               {placeTypes.map((placeType) => (
                 <button
@@ -541,7 +593,7 @@ function RouteForm({ form, options, onChange, onToggleArray, onSubmit, isSubmitt
             {lastUpdated ? <small>마지막 업데이트: {lastUpdated}</small> : null}
           </div>
           <button type="submit" className="wideActionButton" disabled={isSubmitting}>
-            {isSubmitting ? "동선 생성 중..." : isDirty ? "조건 반영하고 추천" : "동선 추천받기"}
+            {isSubmitting ? "동선 생성 중..." : "동선 생성"}
           </button>
         </div>
       </form>
@@ -565,13 +617,14 @@ function RouteSummary({ route }) {
   const timeline = route?.timeline || [];
   const districts = [...new Set(timeline.map((item) => item.district).filter(Boolean))];
   const placeTypes = [...new Set(timeline.map((item) => item.place_type).filter(Boolean))];
+  const routeCharacter = getRouteCharacter(timeline, summary);
 
   return (
     <section className="metricGrid routeSummaryGrid" aria-label="동선 추천 요약">
       <MetricCard label="방문 지점" value={formatNumber(summary.num_visits || timeline.length)} caption="추천된 하루 일정" tone="amber" />
-      <MetricCard label="운영 시간" value={summary.estimated_total_time || "확인 필요"} caption={`${summary.date || ""} ${summary.day_of_week || ""}`.trim()} />
+      <MetricCard label="지도 표시" value={formatNumber(timeline.filter((item) => item.has_coordinates).length)} caption={`${timeline.length}곳 중 marker 가능`} />
       <MetricCard label="주요 타깃" value={summary.target_voter_group || "확인 필요"} caption={summary.campaign_goal || "캠페인 목적"} tone="blue" />
-      <MetricCard label="장소 유형" value={formatNumber(summary.place_type_diversity || placeTypes.length)} caption={districts.join(", ") || "자치구 확인"} tone="green" />
+      <MetricCard label="동선 성격" value={routeCharacter} caption={districts.join(", ") || placeTypes.join(", ") || "자치구 확인"} tone="green" />
     </section>
   );
 }
@@ -779,6 +832,7 @@ export default function RoutePlannerPage() {
   const previousDistrictsKeyRef = useRef(null);
 
   const routeTimeline = useMemo(() => route?.timeline || [], [route]);
+  const routeDataMode = useMemo(() => getRouteDataMode(route), [route]);
   const mapMarkers = useMemo(() => buildRouteMarkers(routeTimeline), [routeTimeline]);
   const noCoordinateItems = useMemo(() => buildNoCoordinateItems(routeTimeline), [routeTimeline]);
   const districtsKey = useMemo(() => JSON.stringify(form?.districts || []), [form?.districts]);
@@ -848,8 +902,14 @@ export default function RoutePlannerPage() {
       if (!normalizedSample) {
         throw new Error("초기 동선 데이터에 방문 지점이 없습니다.");
       }
+      const initialRequest = samplePayload?.static_fallback || samplePayload?.demo_fallback
+        ? (normalizedSample.request || optionsPayload.default_request || {})
+        : (optionsPayload.default_request || normalizedSample.request || {});
       setOptions(optionsPayload);
-      setForm(optionsPayload.default_request || normalizedSample.request || {});
+      setForm({
+        ...initialRequest,
+        candidate_profile: initialRequest.candidate_profile || "general",
+      });
       setIsCoordinateLoading(true);
       const enrichedTimeline = await enrichRouteTimelineCoordinates(normalizedSample.timeline, {
         coordinateSources: getRouteItems(samplePayload),
@@ -859,6 +919,7 @@ export default function RoutePlannerPage() {
         timeline: enrichedTimeline,
         debug: {
           ...(normalizedSample.debug || {}),
+          data_mode: getRouteDataMode(normalizedSample),
           coordinate_enrichment: getCoordinateDebugSummary(enrichedTimeline),
         },
       };
@@ -953,6 +1014,21 @@ export default function RoutePlannerPage() {
   }, [mapMarkers]);
 
   useEffect(() => {
+    if (!routeTimeline.length) {
+      return;
+    }
+    debugRoute("marker/timeline consistency", {
+      timelineCount: routeTimeline.length,
+      markerCount: mapMarkers.length,
+      noCoordinateCount: noCoordinateItems.length,
+      invariantOk: routeTimeline.length === mapMarkers.length + noCoordinateItems.length,
+      markerOrders: mapMarkers.map((marker) => marker.order),
+      timelineOrders: routeTimeline.map((item) => item.order),
+      dataMode: routeDataMode,
+    });
+  }, [mapMarkers, noCoordinateItems.length, routeDataMode, routeTimeline]);
+
+  useEffect(() => {
     debugRoute("selected stop", {
       selectedStopIndex,
       selectedStop: selectedItem?.display_place_name || selectedItem?.place_name,
@@ -985,9 +1061,6 @@ export default function RoutePlannerPage() {
       setIsSubmitting(true);
       setIsCoordinateLoading(false);
       setErrorMessage("");
-      setRoute(null);
-      setSelectedStopIndex(0);
-      setSelectedVisitIds([]);
       setIsSwapOpen(false);
       if (typeof window !== "undefined") {
         window.__lastRouteDebug = null;
@@ -1016,6 +1089,7 @@ export default function RoutePlannerPage() {
         timeline: enrichedTimeline,
         debug: {
           ...(normalizedPayload.debug || {}),
+          data_mode: getRouteDataMode(normalizedPayload),
           coordinate_enrichment: getCoordinateDebugSummary(enrichedTimeline),
         },
       };
@@ -1036,13 +1110,11 @@ export default function RoutePlannerPage() {
       const districts = (form.districts || []).slice(0, 2).join("·") || enrichedPayload?.summary?.start_location_district || "서울";
       showToast(`${districts} / ${form.target_voter_group || "타깃"} 조건으로 ${enrichedPayload.timeline.length}개 일정을 추천했습니다.`);
     } catch (error) {
-      warnRoute("route recommendation failed; cleared current route", {
+      warnRoute("route recommendation failed; retained current route", {
         endpoint: "/route/recommend",
         message: error.message,
       });
       setErrorMessage(error.message || "동선 추천 중 오류가 발생했습니다.");
-      setRoute(null);
-      setSelectedStopIndex(0);
     } finally {
       setIsCoordinateLoading(false);
       setIsSubmitting(false);
@@ -1162,9 +1234,9 @@ export default function RoutePlannerPage() {
   return (
     <AppShell active="route">
       <HeroHeader
-        eyebrow="AI 기반 하루 유세 동선"
-        title={<>하루 유세 동선<br />만들기</>}
-        description="출발지, 방문 지역, 타깃을 입력하면 시간대별 방문 순서를 추천합니다."
+        eyebrow="Route Planning Workspace"
+        title="하루 유세 동선 설계"
+        description="후보자의 하루 일정을 실제 캠프 실무 흐름에 맞춰 추천합니다."
       />
 
       {errorMessage ? <ErrorState message={errorMessage} onRetry={loadInitialData} /> : null}
@@ -1210,16 +1282,29 @@ export default function RoutePlannerPage() {
                 onRemoveStop={handleRemoveCampaignRouteStop}
               />
               <div className="routeOutputGrid">
-                <KakaoRouteMap
-                  stops={mapMarkers}
-                  selectedStopId={selectedStopId}
-                  onSelectStop={(stopId) => handleSelectStop(stopId, true)}
-                  startLabel={route?.summary?.start_location || form.start_location}
-                  noCoordinateCount={noCoordinateItems.length}
-                  totalStopCount={routeTimeline.length}
-                  coordinateLoading={isCoordinateLoading}
-                  coordinateStatusMessage={coordinateStatusMessage}
-                />
+                <section className="routeMapPanel" aria-label="추천 동선 지도">
+                  <div className="mapPanelHeader">
+                    <div>
+                      <Tag tone="amber">추천 동선 지도</Tag>
+                      <h2>지도 marker와 방문 순서를 함께 확인합니다</h2>
+                    </div>
+                    <Tag tone={getRouteDataModeTone(routeDataMode)}>{routeDataMode}</Tag>
+                    <div className="mapLegendCard compact">
+                      <span><i className="legend-dot orange" />번호 marker = 방문 순서</span>
+                      <span><i className="legend-dot muted" />좌표 확인 필요</span>
+                    </div>
+                  </div>
+                  <KakaoRouteMap
+                    stops={mapMarkers}
+                    selectedStopId={selectedStopId}
+                    onSelectStop={(stopId) => handleSelectStop(stopId, true)}
+                    startLabel={route?.summary?.start_location || form.start_location}
+                    noCoordinateCount={noCoordinateItems.length}
+                    totalStopCount={routeTimeline.length}
+                    coordinateLoading={isCoordinateLoading}
+                    coordinateStatusMessage={coordinateStatusMessage}
+                  />
+                </section>
                 <Card className="selectedRouteCard">
                   <div className="cardHeaderLine">
                     <Tag tone="amber">현재 일정</Tag>
@@ -1279,7 +1364,7 @@ export default function RoutePlannerPage() {
               <Section
                 eyebrow="Timeline"
                 title="추천 타임라인"
-                description="몇 시에 어디를 갈지 먼저 확인합니다."
+                description="카드, 지도 marker, 타임라인의 장소명과 순서를 같은 번호로 확인합니다."
               >
                 <RouteTimeline
                   items={routeTimeline}

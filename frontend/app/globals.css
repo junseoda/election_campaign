@@ -816,6 +816,19 @@ input[type="checkbox"] {
   line-height: 1.45;
 }
 
+.recommendationAddressLine {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 3px !important;
+  color: var(--text-muted) !important;
+}
+
+.recommendationAddressLine span {
+  color: var(--accent-deep);
+  font-weight: 800;
+}
+
 .chipRow {
   display: flex;
   flex-wrap: wrap;
@@ -3273,6 +3286,39 @@ button {
   animation: shimmer 1.15s infinite;
 }
 
+.staticFallbackMapCanvas {
+  position: relative;
+  min-height: 260px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background:
+    linear-gradient(90deg, rgba(124, 142, 161, 0.12) 1px, transparent 1px),
+    linear-gradient(0deg, rgba(124, 142, 161, 0.12) 1px, transparent 1px),
+    linear-gradient(135deg, rgba(247, 250, 252, 0.92), rgba(238, 243, 248, 0.92));
+  background-size: 44px 44px, 44px 44px, auto;
+}
+
+.staticFallbackRouteLine {
+  position: absolute;
+  inset: 22% 12%;
+  border-top: 2px dashed rgba(245, 158, 11, 0.55);
+  transform: rotate(-8deg);
+  transform-origin: center;
+}
+
+.staticFallbackMapCanvas .kakao-route-marker {
+  position: absolute;
+  z-index: 3;
+  transform: translate(-50%, -50%);
+}
+
+.staticFallbackInfo {
+  right: 14px;
+  bottom: 14px;
+  max-width: min(300px, calc(100% - 28px));
+}
+
 .fallbackRouteList {
   display: grid;
   gap: 9px;
@@ -3551,5 +3597,586 @@ button {
 
   .mobileActionBar {
     grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+/* Launch polish: strategy dashboard design system */
+:root {
+  --background: #f6f7fb;
+  --surface: #ffffff;
+  --surface-muted: #f3f4f6;
+  --surface-soft: var(--surface-muted);
+  --border: #e5e7eb;
+  --text-primary: #111827;
+  --text-secondary: #4b5563;
+  --text-muted: #6b7280;
+  --text-tertiary: var(--text-muted);
+  --accent: #2563eb;
+  --accent-deep: #1d4ed8;
+  --accent-soft: #eff6ff;
+  --success: #059669;
+  --success-soft: #ecfdf5;
+  --warning: #b45309;
+  --warning-soft: #fffbeb;
+  --danger: #dc2626;
+  --card-radius: 18px;
+  --card-shadow: 0 10px 24px rgba(17, 24, 39, 0.06);
+  --page-max-width: 1480px;
+  --app-bg: var(--background);
+  --app-bg-warm: #eef2ff;
+  --info: #2563eb;
+  --info-soft: #eff6ff;
+  --radius-sm: 12px;
+  --radius-md: var(--card-radius);
+  --radius-lg: 22px;
+  --shadow-sm: 0 1px 2px rgba(17, 24, 39, 0.04);
+  --shadow-md: var(--card-shadow);
+  --shadow-lg: 0 18px 46px rgba(17, 24, 39, 0.12);
+}
+
+body {
+  background: var(--background);
+  color: var(--text-primary);
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+summary:focus-visible {
+  outline: 3px solid rgba(37, 99, 235, 0.24);
+  outline-offset: 3px;
+}
+
+.appShell {
+  display: block !important;
+  min-height: 100vh;
+  padding: 0 16px 56px;
+}
+
+.appContent {
+  width: min(100%, var(--page-max-width));
+  max-width: var(--page-max-width);
+  margin: 0 auto;
+  padding-top: 24px;
+}
+
+.desktopSidebar,
+.bottomNav {
+  display: none !important;
+}
+
+.appTopbar {
+  position: sticky;
+  top: 0;
+  z-index: 60;
+  display: flex;
+  min-height: 64px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  width: min(100%, var(--page-max-width));
+  margin: 0 auto;
+  border-bottom: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.92);
+  padding: 10px 0;
+  backdrop-filter: blur(18px);
+}
+
+.brandLockup {
+  min-width: min(320px, 100%);
+}
+
+.brandMark {
+  border-radius: 12px;
+  background: linear-gradient(145deg, #111827, #2563eb);
+  box-shadow: 0 10px 22px rgba(37, 99, 235, 0.18);
+}
+
+.brandLockup strong {
+  color: var(--text-primary);
+  font-size: 15px;
+}
+
+.brandLockup small {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.topbarNav {
+  display: flex;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.topbarNav a {
+  display: inline-flex;
+  min-height: 38px;
+  align-items: center;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  color: var(--text-secondary);
+  padding: 0 13px;
+  font-size: 13px;
+  font-weight: 800;
+  transition: background 160ms ease, border-color 160ms ease, color 160ms ease;
+}
+
+.topbarNav a:hover,
+.topbarNav a.active {
+  border-color: rgba(37, 99, 235, 0.16);
+  background: var(--accent-soft);
+  color: var(--accent-deep);
+}
+
+.appStatusBadge {
+  display: inline-flex;
+  min-height: 30px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(37, 99, 235, 0.18);
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent-deep);
+  padding: 0 11px;
+  font-size: 11px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.heroHeader {
+  border-color: var(--border);
+  border-radius: 22px;
+  background: linear-gradient(180deg, #ffffff 0%, #f9fafb 100%);
+  box-shadow: var(--card-shadow);
+  padding: 24px;
+}
+
+.heroHeader h1 {
+  max-width: 820px;
+  font-size: clamp(30px, 4.1vw, 48px);
+  line-height: 1.12;
+}
+
+.heroHeader p {
+  max-width: 780px;
+  color: var(--text-secondary);
+}
+
+.heroMeta,
+.card,
+.statePanel,
+.routeStepCard,
+.timelineItem,
+.metricCard,
+.querySelectorCard,
+.queryConditionCard {
+  border: 1px solid var(--border);
+  border-radius: var(--card-radius);
+  background: var(--surface);
+  box-shadow: var(--card-shadow);
+}
+
+.card {
+  background: var(--surface);
+}
+
+.buttonLink.primary,
+.wideActionButton,
+button {
+  background: var(--text-primary);
+}
+
+.buttonLink.primary:hover,
+.wideActionButton:hover:not(:disabled) {
+  background: #020617;
+}
+
+.buttonLink.secondary {
+  background: var(--surface);
+}
+
+.tag.amber,
+.tag.blue {
+  border-color: rgba(37, 99, 235, 0.18);
+  background: var(--accent-soft);
+  color: var(--accent-deep);
+}
+
+.tag.green {
+  border-color: rgba(5, 150, 105, 0.18);
+  background: var(--success-soft);
+  color: var(--success);
+}
+
+.metricCard.amber,
+.metricCard.emphasis,
+.insightCard.amber,
+.recommendationCard.featured,
+.selectedRouteCard,
+.nextScheduleCard {
+  border-color: rgba(37, 99, 235, 0.16);
+  background: linear-gradient(180deg, #f8fbff, #ffffff);
+}
+
+.nextRecommendationCard {
+  background: linear-gradient(145deg, #111827, #1d4ed8);
+  box-shadow: 0 18px 40px rgba(37, 99, 235, 0.18);
+}
+
+.rankBadge,
+.kakao-route-marker,
+.clusterMarker,
+.routeMarker,
+.fallbackRouteList button > span,
+.mapStopList button > span {
+  background: var(--accent);
+  box-shadow: 0 10px 20px rgba(37, 99, 235, 0.22);
+}
+
+.scorePill,
+.selectedScore,
+.scoreDetails summary,
+.metricTop em,
+.metricChartHeader strong,
+.featureCard strong {
+  color: var(--accent-deep);
+}
+
+.scorePill,
+.selectedScore,
+.scoreBreakdownFinal,
+.stickySubmitBox,
+.chipSelectGrid button.selected {
+  border-color: rgba(37, 99, 235, 0.2);
+  background: var(--accent-soft);
+}
+
+.chipSelectGrid button.selected {
+  color: var(--accent-deep);
+}
+
+.mapToolbar > span,
+.cardHeaderLine > span:last-child {
+  color: var(--text-secondary);
+}
+
+.recommendConditionForm {
+  display: grid;
+  gap: 14px;
+  margin-top: 16px;
+}
+
+.recommendConditionForm label {
+  display: grid;
+  gap: 7px;
+}
+
+.recommendConditionForm label > span,
+.fieldHelper {
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.45;
+}
+
+.querySelectorCard h2 {
+  margin: 10px 0 0;
+  font-size: 22px;
+  line-height: 1.28;
+}
+
+.conditionHelperGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.conditionHelperGrid span {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface-muted);
+  color: var(--text-primary);
+  padding: 11px;
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.conditionHelperGrid strong {
+  color: var(--text-muted);
+  font-size: 11px;
+  text-transform: none;
+}
+
+.suitabilityMeter {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.suitabilityMeter div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.suitabilityMeter strong {
+  color: var(--text-primary);
+  font-size: 14px;
+}
+
+.suitabilityMeter i,
+.featureContributionList i {
+  display: block;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e5e7eb;
+}
+
+.suitabilityMeter i {
+  height: 10px;
+}
+
+.suitabilityMeter b,
+.featureContributionList b,
+.miniChart .active b,
+.missingChart b {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+}
+
+.featureContributionList {
+  display: grid;
+  gap: 9px;
+  margin-top: 14px;
+}
+
+.featureContributionList div {
+  display: grid;
+  grid-template-columns: minmax(92px, 0.35fr) minmax(90px, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+}
+
+.featureContributionList span,
+.featureContributionList strong {
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.featureContributionList span {
+  color: var(--text-secondary);
+}
+
+.featureContributionList strong {
+  color: var(--text-primary);
+}
+
+.featureContributionList i {
+  height: 8px;
+}
+
+.routeMapPanel {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+.mapPanelHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.mapPanelHeader h2 {
+  margin: 8px 0 0;
+  font-size: 21px;
+  line-height: 1.28;
+}
+
+.mapLegendCard.compact {
+  justify-content: flex-end;
+  border: 0;
+  background: transparent;
+  padding: 0;
+}
+
+.fieldHelper {
+  display: block;
+  font-weight: 700;
+}
+
+.evaluationSummary {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.evaluationSummary .metricCard {
+  min-height: 138px;
+}
+
+.evaluationSummary .metricCard strong {
+  font-size: clamp(19px, 2vw, 28px);
+  line-height: 1.16;
+  overflow-wrap: anywhere;
+}
+
+.evaluationTableWrap {
+  overflow-x: auto;
+  margin-bottom: 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--card-radius);
+  background: var(--surface);
+  box-shadow: var(--card-shadow);
+}
+
+.evaluationTable {
+  width: 100%;
+  min-width: 940px;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.evaluationTable th,
+.evaluationTable td {
+  border-bottom: 1px solid var(--border);
+  padding: 13px 14px;
+  text-align: right;
+  vertical-align: middle;
+}
+
+.evaluationTable th:first-child,
+.evaluationTable td:first-child,
+.evaluationTable tbody th {
+  text-align: left;
+}
+
+.evaluationTable thead th {
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.evaluationTable tbody th {
+  color: var(--text-primary);
+  font-weight: 900;
+}
+
+.evaluationTable tr.finalModelRow {
+  background: var(--accent-soft);
+}
+
+.evaluationTable .bestMetric {
+  color: var(--accent-deep);
+  font-weight: 900;
+}
+
+.comparisonGrid {
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)) !important;
+}
+
+.failureCaseGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px;
+}
+
+.failureCaseCard {
+  display: grid;
+  gap: 12px;
+  padding: 18px;
+}
+
+.failureCaseCard strong {
+  font-size: 28px;
+  line-height: 1;
+}
+
+.failureCaseCard p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.routeWarningList span,
+.routeBalanceNotice {
+  border-color: rgba(180, 83, 9, 0.24);
+  background: var(--warning-soft);
+  color: var(--warning);
+}
+
+@media (max-width: 900px) {
+  .appTopbar {
+    align-items: flex-start;
+    flex-direction: column;
+    padding: 12px 0;
+  }
+
+  .topbarNav {
+    justify-content: flex-start;
+    width: 100%;
+  }
+
+  .appStatusBadge {
+    position: absolute;
+    right: 0;
+    top: 14px;
+  }
+
+  .brandLockup {
+    padding-right: 132px;
+  }
+}
+
+@media (max-width: 560px) {
+  .appShell {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  .appContent {
+    padding-top: 18px;
+  }
+
+  .brandLockup small {
+    display: none;
+  }
+
+  .topbarNav a {
+    flex: 1 1 calc(50% - 6px);
+    justify-content: center;
+    padding: 0 8px;
+  }
+
+  .heroHeader {
+    padding: 20px;
+  }
+
+  .conditionHelperGrid,
+  .featureContributionList div,
+  .mapPanelHeader {
+    grid-template-columns: 1fr;
+  }
+
+  .mapPanelHeader {
+    display: grid;
+  }
+
+  .metricCard strong {
+    font-size: 23px;
   }
 }

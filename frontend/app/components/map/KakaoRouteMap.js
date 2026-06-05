@@ -13,6 +13,8 @@ const MAP_STATUS_LABELS = {
 };
 const ENABLE_KAKAO_MAP_DEBUG =
   process.env.NODE_ENV !== "production" || process.env.NEXT_PUBLIC_KAKAO_MAP_DEBUG === "true";
+const USE_CONSERVATIVE_PRODUCTION_MAP_FALLBACK =
+  process.env.NODE_ENV === "production" && process.env.NEXT_PUBLIC_KAKAO_MAP_ALLOW_CONNECTED !== "true";
 
 function normalizeAppKey(appKey) {
   return typeof appKey === "string" ? appKey.trim() : "";
@@ -774,6 +776,14 @@ export default function KakaoRouteMap({
   }, [appKey, compact, normalizedStops.length, selectedStopId]);
 
   useEffect(() => {
+    if (USE_CONSERVATIVE_PRODUCTION_MAP_FALLBACK) {
+      setIsLoading(false);
+      setIsReady(false);
+      setIsRuntimeConnected(false);
+      setLoadError("runtime-unavailable");
+      return;
+    }
+
     if (hasInvalidPrimaryAppKey) {
       warnKakaoMap("NEXT_PUBLIC_KAKAO_MAP_API_KEY looks invalid", {
         appKey: getAppKeyLabel(primaryAppKey),
@@ -1151,7 +1161,7 @@ export default function KakaoRouteMap({
     };
   }, [isReady, stopPositionKey, compact, normalizedStops]);
 
-  if (!appKey || loadError || (isReady && !isRuntimeConnected)) {
+  if (USE_CONSERVATIVE_PRODUCTION_MAP_FALLBACK || !appKey || loadError || (isReady && !isRuntimeConnected)) {
     return (
       <MapFallback
         stops={normalizedStops}

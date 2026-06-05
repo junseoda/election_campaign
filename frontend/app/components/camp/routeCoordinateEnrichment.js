@@ -587,9 +587,13 @@ function writeCoordinateCache(item = {}) {
 }
 
 function getKakaoAppKey() {
-  const primary = process.env.NEXT_PUBLIC_KAKAO_MAP_API_KEY || "";
-  const legacy = process.env.NEXT_PUBLIC_KAKAO_MAP_JS_KEY || "";
-  return String(primary || legacy).trim();
+  return String(
+    process.env.NEXT_PUBLIC_KAKAO_JAVASCRIPT_KEY ||
+    process.env.NEXT_PUBLIC_KAKAO_MAP_API_KEY ||
+    process.env.NEXT_PUBLIC_KAKAO_MAP_KEY ||
+    process.env.NEXT_PUBLIC_KAKAO_MAP_JS_KEY ||
+    ""
+  ).trim();
 }
 
 function buildKakaoSdkSrc(appKey) {

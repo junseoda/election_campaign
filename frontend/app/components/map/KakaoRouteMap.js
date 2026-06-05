@@ -13,8 +13,6 @@ const MAP_STATUS_LABELS = {
 };
 const ENABLE_KAKAO_MAP_DEBUG =
   process.env.NODE_ENV !== "production" || process.env.NEXT_PUBLIC_KAKAO_MAP_DEBUG === "true";
-const USE_CONSERVATIVE_PRODUCTION_MAP_FALLBACK =
-  process.env.NODE_ENV === "production" && process.env.NEXT_PUBLIC_KAKAO_MAP_ALLOW_CONNECTED !== "true";
 
 function normalizeAppKey(appKey) {
   return typeof appKey === "string" ? appKey.trim() : "";
@@ -39,6 +37,28 @@ function buildKakaoSdkSrc(appKey) {
 
 function buildMaskedKakaoSdkSrc(appKey) {
   return `${KAKAO_SDK_BASE_URL}?appkey=${getAppKeyLabel(appKey)}&autoload=false&libraries=services`;
+}
+
+function getKakaoAppKeyCandidates() {
+  return [
+    { name: "NEXT_PUBLIC_KAKAO_JAVASCRIPT_KEY", value: normalizeAppKey(process.env.NEXT_PUBLIC_KAKAO_JAVASCRIPT_KEY) },
+    { name: "NEXT_PUBLIC_KAKAO_MAP_API_KEY", value: normalizeAppKey(process.env.NEXT_PUBLIC_KAKAO_MAP_API_KEY) },
+    { name: "NEXT_PUBLIC_KAKAO_MAP_KEY", value: normalizeAppKey(process.env.NEXT_PUBLIC_KAKAO_MAP_KEY) },
+    { name: "NEXT_PUBLIC_KAKAO_MAP_JS_KEY", value: normalizeAppKey(process.env.NEXT_PUBLIC_KAKAO_MAP_JS_KEY) },
+  ];
+}
+
+function getKakaoAppKeyConfig() {
+  const candidates = getKakaoAppKeyCandidates();
+  const valid = candidates.find(({ value }) => isLikelyKakaoAppKey(value));
+  return {
+    appKey: valid?.value || "",
+    envName: valid?.name || "",
+    invalidNames: candidates
+      .filter(({ value }) => value && !isLikelyKakaoAppKey(value))
+      .map(({ name }) => name),
+    hasAnyConfiguredValue: candidates.some(({ value }) => Boolean(value)),
+  };
 }
 
 function warnKakaoMap(message, details = {}) {
@@ -729,15 +749,9 @@ export default function KakaoRouteMap({
   coordinateLoading = false,
   coordinateStatusMessage = "",
 }) {
-  const primaryAppKey = normalizeAppKey(process.env.NEXT_PUBLIC_KAKAO_MAP_API_KEY);
-  const legacyAppKey = normalizeAppKey(process.env.NEXT_PUBLIC_KAKAO_MAP_JS_KEY);
-  const appKey = isLikelyKakaoAppKey(primaryAppKey)
-    ? primaryAppKey
-    : isLikelyKakaoAppKey(legacyAppKey)
-      ? legacyAppKey
-      : "";
-  const appKeyIssue = appKey ? "" : (primaryAppKey || legacyAppKey ? "invalid-key" : "missing-key");
-  const hasInvalidPrimaryAppKey = Boolean(primaryAppKey && !isLikelyKakaoAppKey(primaryAppKey));
+  const appKeyConfig = useMemo(() => getKakaoAppKeyConfig(), []);
+  const appKey = appKeyConfig.appKey;
+  const appKeyIssue = appKey ? "" : (appKeyConfig.hasAnyConfiguredValue ? "invalid-key" : "missing-key");
   const mapRef = useRef(null);
   const kakaoMapRef = useRef(null);
   const overlaysRef = useRef([]);
@@ -769,33 +783,27 @@ export default function KakaoRouteMap({
     debugKakaoMap("component mounted", {
       compact,
       hasAppKey: Boolean(appKey),
+      appKeyEnvName: appKeyConfig.envName || "none",
       stopsLength: normalizedStops.length,
       coordSummary: getCoordSummary(normalizedStops),
       selectedStopId,
     });
-  }, [appKey, compact, normalizedStops.length, selectedStopId]);
+  }, [appKey, appKeyConfig.envName, compact, normalizedStops.length, selectedStopId]);
 
   useEffect(() => {
-    if (USE_CONSERVATIVE_PRODUCTION_MAP_FALLBACK) {
-      setIsLoading(false);
-      setIsReady(false);
-      setIsRuntimeConnected(false);
-      setLoadError("runtime-unavailable");
-      return;
-    }
-
-    if (hasInvalidPrimaryAppKey) {
-      warnKakaoMap("NEXT_PUBLIC_KAKAO_MAP_API_KEY looks invalid", {
-        appKey: getAppKeyLabel(primaryAppKey),
-        expected: "Kakao JavaScript key, not a URL",
-        fallback: isLikelyKakaoAppKey(legacyAppKey) ? "NEXT_PUBLIC_KAKAO_MAP_JS_KEY" : "none",
+    if (appKeyConfig.invalidNames.length) {
+      warnKakaoMap("Some Kakao map environment variables look invalid", {
+        invalidNames: appKeyConfig.invalidNames,
+        selectedEnv: appKeyConfig.envName || "none",
+        expected: "Kakao JavaScript key, not a URL or server key label",
       });
     }
 
     if (!appKey) {
       warnKakaoMap(appKeyIssue === "invalid-key" ? "Kakao map API key looks invalid" : "Kakao map API key is missing", {
-        primary: getAppKeyLabel(primaryAppKey),
-        legacy: getAppKeyLabel(legacyAppKey),
+        configuredEnvNames: getKakaoAppKeyCandidates()
+          .filter(({ value }) => Boolean(value))
+          .map(({ name }) => name),
       });
       setIsLoading(false);
       setIsRuntimeConnected(false);
@@ -993,7 +1001,7 @@ export default function KakaoRouteMap({
       }
       kakaoMapRef.current = null;
     };
-  }, [appKey, appKeyIssue, compact, hasInvalidPrimaryAppKey, legacyAppKey, primaryAppKey]);
+  }, [appKey, appKeyConfig.envName, appKeyConfig.invalidNames, appKeyIssue, compact]);
 
   useEffect(() => {
     if (!isReady || typeof window === "undefined") {
@@ -1161,7 +1169,7 @@ export default function KakaoRouteMap({
     };
   }, [isReady, stopPositionKey, compact, normalizedStops]);
 
-  if (USE_CONSERVATIVE_PRODUCTION_MAP_FALLBACK || !appKey || loadError || (isReady && !isRuntimeConnected)) {
+  if (!appKey || loadError || (isReady && !isRuntimeConnected)) {
     return (
       <MapFallback
         stops={normalizedStops}

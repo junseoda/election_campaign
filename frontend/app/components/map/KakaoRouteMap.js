@@ -742,6 +742,7 @@ export default function KakaoRouteMap({
   const polylineRef = useRef(null);
   const [isLoading, setIsLoading] = useState(Boolean(appKey));
   const [isReady, setIsReady] = useState(false);
+  const [isRuntimeConnected, setIsRuntimeConnected] = useState(false);
   const [loadError, setLoadError] = useState("");
 
   const normalizedStops = useMemo(() => normalizeStops(stops), [stops]);
@@ -787,6 +788,7 @@ export default function KakaoRouteMap({
         legacy: getAppKeyLabel(legacyAppKey),
       });
       setIsLoading(false);
+      setIsRuntimeConnected(false);
       setLoadError(appKeyIssue);
       return;
     }
@@ -798,6 +800,7 @@ export default function KakaoRouteMap({
     if (!mapRef.current) {
       warnKakaoMap("Kakao map container is missing");
       setIsLoading(false);
+      setIsRuntimeConnected(false);
       setLoadError("container-missing");
       return;
     }
@@ -839,6 +842,7 @@ export default function KakaoRouteMap({
     };
 
     setIsLoading(true);
+    setIsRuntimeConnected(false);
     setLoadError("");
 
     loadKakaoSdk(appKey)
@@ -931,7 +935,17 @@ export default function KakaoRouteMap({
             }, 420);
             diagnosticTimers.push(fitBoundsTimer);
 
+            const hasConnectedRuntime = Boolean(window.kakao?.maps && kakaoMapRef.current);
+            if (!hasConnectedRuntime) {
+              setIsReady(false);
+              setIsRuntimeConnected(false);
+              setLoadError("runtime-unavailable");
+              setIsLoading(false);
+              return;
+            }
+
             setIsReady(true);
+            setIsRuntimeConnected(true);
             setIsLoading(false);
           } catch (error) {
             warnKakaoMap("Kakao map initialization failed", {
@@ -939,6 +953,7 @@ export default function KakaoRouteMap({
               error: error?.message || String(error),
               containerSize: getContainerMetrics(mapRef.current),
             });
+            setIsRuntimeConnected(false);
             setLoadError("init-failed");
             setIsLoading(false);
           }
@@ -953,6 +968,7 @@ export default function KakaoRouteMap({
           appKey: getAppKeyLabel(appKey),
           error: error?.message || String(error),
         });
+        setIsRuntimeConnected(false);
         setLoadError("sdk-failed");
         setIsLoading(false);
       });
@@ -968,6 +984,34 @@ export default function KakaoRouteMap({
       kakaoMapRef.current = null;
     };
   }, [appKey, appKeyIssue, compact, hasInvalidPrimaryAppKey, legacyAppKey, primaryAppKey]);
+
+  useEffect(() => {
+    if (!isReady || typeof window === "undefined") {
+      return;
+    }
+
+    const verifyRuntimeConnection = () => {
+      const connected = Boolean(kakaoMapRef.current && window.kakao?.maps);
+      setIsRuntimeConnected(connected);
+      if (!connected) {
+        clearOverlays(overlaysRef);
+        if (polylineRef.current) {
+          polylineRef.current.setMap(null);
+          polylineRef.current = null;
+        }
+        kakaoMapRef.current = null;
+        setIsReady(false);
+        setIsLoading(false);
+        setLoadError("runtime-unavailable");
+      }
+    };
+
+    verifyRuntimeConnection();
+    const interval = window.setInterval(verifyRuntimeConnection, 1200);
+    return () => {
+      window.clearInterval(interval);
+    };
+  }, [isReady]);
 
   useEffect(() => {
     if (!isReady || !kakaoMapRef.current || typeof window === "undefined" || !window.kakao?.maps) {
@@ -1107,7 +1151,7 @@ export default function KakaoRouteMap({
     };
   }, [isReady, stopPositionKey, compact, normalizedStops]);
 
-  if (!appKey || loadError) {
+  if (!appKey || loadError || (isReady && !isRuntimeConnected)) {
     return (
       <MapFallback
         stops={normalizedStops}
@@ -1123,7 +1167,7 @@ export default function KakaoRouteMap({
     );
   }
 
-  const mapRuntimeStatus = isReady ? "connected" : "loading";
+  const mapRuntimeStatus = isRuntimeConnected ? "connected" : "loading";
 
   return (
     <div

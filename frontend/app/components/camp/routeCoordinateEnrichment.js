@@ -76,7 +76,7 @@ const COORDINATE_STATUS_DETAILS = {
   address_missing: "주소가 없어 장소명과 자치구 기준으로만 검색했습니다.",
   kakao_sdk_not_loaded: "지도 SDK 또는 Kakao services 로딩에 실패했습니다.",
   invalid_lat_lng: "좌표값이 숫자 형식 또는 서울 범위를 벗어났습니다.",
-  district_mismatch_geocode_rejected: "검색 결과가 다른 자치구로 확인되어 marker에서 제외했습니다.",
+  district_mismatch_geocode_rejected: "검색된 좌표의 자치구가 추천 조건과 일치하지 않아 지도 표시에서 제외했습니다.",
 };
 
 const FEATURE_SCORE_ROWS = [

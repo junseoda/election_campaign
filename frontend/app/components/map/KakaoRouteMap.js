@@ -5,6 +5,12 @@ import { useEffect, useMemo, useRef, useState } from "react";
 const DEFAULT_EMPTY_MAP_CENTER = { lat: 37.55, lng: 126.99 };
 const SDK_SCRIPT_ID = "kakao-map-sdk";
 const KAKAO_SDK_BASE_URL = "https://dapi.kakao.com/v2/maps/sdk.js";
+const MAP_STATUS_LABELS = {
+  connected: "Kakao Map Connected",
+  fallback: "Fallback Map Preview",
+  loading: "Map Loading",
+  unavailable: "Map Unavailable",
+};
 const ENABLE_KAKAO_MAP_DEBUG =
   process.env.NODE_ENV !== "production" || process.env.NEXT_PUBLIC_KAKAO_MAP_DEBUG === "true";
 
@@ -628,16 +634,23 @@ function createMarkerElement(stop, selected) {
 }
 
 function getFallbackTitle(loadError) {
-  if (loadError === "missing-key") {
-    return "지도 API 키가 설정되지 않았습니다.";
-  }
-  if (loadError === "invalid-key") {
-    return "지도 API 키 형식이 올바르지 않습니다.";
-  }
   if (loadError) {
-    return "카카오맵을 불러오지 못했습니다.";
+    return "지도 미리보기로 표시 중";
   }
   return "지도 설정 전 미리보기";
+}
+
+function MapStateBadge({ status }) {
+  const safeStatus = MAP_STATUS_LABELS[status] ? status : "unavailable";
+  return (
+    <span
+      className={`mapStateBadge ${safeStatus}`}
+      data-map-status-badge="true"
+      data-map-status={safeStatus}
+    >
+      {MAP_STATUS_LABELS[safeStatus]}
+    </span>
+  );
 }
 
 function MapFallback({
@@ -648,15 +661,26 @@ function MapFallback({
   loadError,
   noCoordinateCount = 0,
   totalStopCount = stops.length + noCoordinateCount,
+  coordinateLoading = false,
   coordinateStatusMessage = "",
 }) {
   const title = getFallbackTitle(loadError);
+  const fallbackStatus = coordinateLoading
+    ? "loading"
+    : stops.length
+      ? "fallback"
+      : "unavailable";
 
   return (
-    <div className={`kakao-map-card fallback ${compact ? "compact" : ""}`}>
+    <div
+      className={`kakao-map-card fallback ${compact ? "compact" : ""}`}
+      data-kakao-route-map="fallback"
+      data-map-status={fallbackStatus}
+    >
       <div className="map-skeleton soft">
         <div className="mapToolbar">
-          <span className="tag amber">{title}</span>
+          <MapStateBadge status={fallbackStatus} />
+          <span>{title}</span>
           <span>{coordinateStatusMessage || (stops.length ? `${stops.length}곳` : "추천 전")}</span>
           {totalStopCount > 0 ? <span>전체 {totalStopCount}곳 · 지도 {stops.length}곳</span> : null}
           {noCoordinateCount > 0 ? <span>좌표 확인 필요 {noCoordinateCount}개</span> : null}
@@ -1093,13 +1117,20 @@ export default function KakaoRouteMap({
         loadError={loadError}
         noCoordinateCount={noCoordinateCount}
         totalStopCount={visibleTotalStopCount}
+        coordinateLoading={coordinateLoading}
         coordinateStatusMessage={mapStatusMessage}
       />
     );
   }
 
+  const mapRuntimeStatus = isReady ? "connected" : "loading";
+
   return (
-    <div className={`kakao-map-card ${compact ? "compact" : ""} ${className}`} data-kakao-route-map="mounted">
+    <div
+      className={`kakao-map-card ${compact ? "compact" : ""} ${className}`}
+      data-kakao-route-map="mounted"
+      data-map-status={mapRuntimeStatus}
+    >
       <div
         className="kakao-map-container"
         ref={mapRef}
@@ -1120,6 +1151,7 @@ export default function KakaoRouteMap({
         </div>
       ) : null}
       <div className="kakao-map-overlay map-top-right">
+        <MapStateBadge status={mapRuntimeStatus} />
         <strong>{compact ? `${normalizedStops.length}곳` : mapStatusMessage}</strong>
         {!compact && visibleTotalStopCount > 0 ? <span>전체 {visibleTotalStopCount}곳 · 지도 {normalizedStops.length}곳</span> : null}
         {noCoordinateCount > 0 ? <span>좌표 확인 필요 {noCoordinateCount}개</span> : null}

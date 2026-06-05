@@ -1359,8 +1359,8 @@ export function Card({ className = "", children, ...props }) {
   return <section className={`card ${className}`} {...props}>{children}</section>;
 }
 
-export function Tag({ tone = "neutral", children }) {
-  return <span className={`tag ${tone}`}>{children}</span>;
+export function Tag({ tone = "neutral", children, ...props }) {
+  return <span className={`tag ${tone}`} {...props}>{children}</span>;
 }
 
 export const Pill = Tag;

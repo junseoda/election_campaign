@@ -331,14 +331,34 @@ function normalizeRoutePayload(payload = {}, request = {}, previousRoute = null)
 
 function getRouteDataMode(route = {}) {
   const source = String(route?.debug?.source || route?.source || "").toLowerCase();
-  if (route?.static_fallback || route?.demo_fallback || /static|fallback|frontend_static_json/.test(source)) {
+  const hasFallbackRouteSource = /static|fallback|frontend_static_json/.test(source);
+  const hasApiRouteSource = /api|backend|live/.test(source);
+  if (route?.static_fallback || route?.demo_fallback || (hasFallbackRouteSource && !hasApiRouteSource)) {
     return "Demo Fallback";
+  }
+  const timeline = Array.isArray(route?.timeline) ? route.timeline : [];
+  const coordinateSourceCounts = route?.debug?.coordinate_enrichment?.source_counts || {};
+  const coordinateSources = [
+    ...Object.keys(coordinateSourceCounts),
+    ...timeline.flatMap((item) => [item.coordinate_source, item.source, item.candidate_source]),
+  ].filter(Boolean).map((value) => String(value).toLowerCase());
+  const hasFrontendCoordinateSupport = coordinateSources.some((value) =>
+    /known_seoul|merged_static|demo_fallback|fallback|frontend_static|static/.test(value)
+  );
+  if ((hasApiRouteSource && hasFallbackRouteSource) || hasFrontendCoordinateSupport) {
+    return "Hybrid Mode";
   }
   return "Live API";
 }
 
 function getRouteDataModeTone(mode) {
-  return mode === "Live API" ? "green" : "blue";
+  if (mode === "Live API") {
+    return "green";
+  }
+  if (mode === "Hybrid Mode") {
+    return "amber";
+  }
+  return "blue";
 }
 
 function debugRoute(message, details = {}) {
@@ -647,6 +667,7 @@ function RouteWarnings({ route }) {
 }
 
 function CoordinateQualityPanel({ timeline = [], markers = [], noCoordinateItems = [], coordinateLoading = false }) {
+  const invariantOk = timeline.length === markers.length + noCoordinateItems.length;
   const districtCounts = timeline.reduce((counts, item) => {
     const district = item.district_normalized || item.district || "자치구 확인";
     counts[district] = (counts[district] || 0) + 1;
@@ -671,7 +692,14 @@ function CoordinateQualityPanel({ timeline = [], markers = [], noCoordinateItems
   }
 
   return (
-    <Card className="routeCoordinatePanel" data-route-coordinate-panel="true">
+    <Card
+      className="routeCoordinatePanel"
+      data-route-coordinate-panel="true"
+      data-route-invariant={invariantOk ? "ok" : "mismatch"}
+      data-timeline-count={timeline.length}
+      data-marker-count={markers.length}
+      data-no-coordinate-count={noCoordinateItems.length}
+    >
       <div className="cardHeaderLine">
         <div>
           <Tag tone={noCoordinateItems.length ? "amber" : "green"}>{coordinateLoading ? "좌표 확인 중" : "좌표 검증"}</Tag>
@@ -700,7 +728,8 @@ function CoordinateQualityPanel({ timeline = [], markers = [], noCoordinateItems
               <li key={item.route_item_id || item.id}>
                 <strong>{item.order}번 {item.display_place_name || item.place_name}</strong>
                 <span>{item.district_normalized || item.district} · {getCoordinateStatusLabel(item.coordinate_status)}</span>
-                <small>{item.address || "주소 확인 필요"} · {getCoordinateStatusDetail(item.coordinate_status)}</small>
+                <small>{item.address || "주소 확인 필요"}</small>
+                <small>제외 사유: {item.coordinate_status_detail || getCoordinateStatusDetail(item.coordinate_status)}</small>
               </li>
             ))}
           </ol>
@@ -1288,7 +1317,7 @@ export default function RoutePlannerPage() {
                       <Tag tone="amber">추천 동선 지도</Tag>
                       <h2>지도 marker와 방문 순서를 함께 확인합니다</h2>
                     </div>
-                    <Tag tone={getRouteDataModeTone(routeDataMode)}>{routeDataMode}</Tag>
+                    <Tag tone={getRouteDataModeTone(routeDataMode)} data-route-data-mode={routeDataMode}>{routeDataMode}</Tag>
                     <div className="mapLegendCard compact">
                       <span><i className="legend-dot orange" />번호 marker = 방문 순서</span>
                       <span><i className="legend-dot muted" />좌표 확인 필요</span>

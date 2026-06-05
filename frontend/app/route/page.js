@@ -45,6 +45,22 @@ const CANDIDATE_PROFILES = [
   { value: "general", label: "일반 후보", note: "균형형 캠페인 운영" },
 ];
 
+function hasPublicApiBaseUrl() {
+  const apiBaseUrl = (process.env.NEXT_PUBLIC_API_BASE_URL || "").trim();
+  if (!apiBaseUrl) {
+    return false;
+  }
+
+  try {
+    const hostname = new URL(apiBaseUrl).hostname.toLowerCase();
+    return !["localhost", "127.0.0.1", "::1", "0.0.0.0"].includes(hostname);
+  } catch (error) {
+    return false;
+  }
+}
+
+const HAS_PUBLIC_API_BASE_URL = hasPublicApiBaseUrl();
+
 function getDayLabel(dateValue) {
   const parsed = new Date(`${dateValue}T00:00:00`);
   if (Number.isNaN(parsed.getTime())) {
@@ -333,6 +349,9 @@ function getRouteDataMode(route = {}) {
   const source = String(route?.debug?.source || route?.source || "").toLowerCase();
   const hasFallbackRouteSource = /static|fallback|frontend_static_json/.test(source);
   const hasApiRouteSource = /api|backend|live/.test(source);
+  if (!HAS_PUBLIC_API_BASE_URL) {
+    return "Demo Fallback";
+  }
   if (route?.static_fallback || route?.demo_fallback || (hasFallbackRouteSource && !hasApiRouteSource)) {
     return "Demo Fallback";
   }

@@ -74,6 +74,15 @@ const securityHeaders = [
 
 const nextConfig = {
   outputFileTracingRoot: path.resolve(process.cwd(), ".."),
+  outputFileTracingIncludes: {
+    "/api/**/*": [
+      "./public/data/**/*.json",
+      "../output/validation/*.csv",
+      "../output/experiments_all_candidates/model_comparison_optimized.csv",
+      "../output/experiments_all_candidates/optimized/model_comparison_optimized.csv",
+      "../output/experiments_all_candidates/optimized/raw_candidate_coverage.csv",
+    ],
+  },
   async headers() {
     return [
       {

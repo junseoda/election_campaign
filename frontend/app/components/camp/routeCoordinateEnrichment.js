@@ -52,7 +52,7 @@ const ABSTRACT_PLACE_DISPLAY_NAMES = {
 };
 
 const COORDINATE_STATUS_LABELS = {
-  [DEMO_FALLBACK_COORDINATE_SOURCE]: "Demo Fallback",
+  [DEMO_FALLBACK_COORDINATE_SOURCE]: "Local Data",
   [KNOWN_SEOUL_COORDINATE_SOURCE]: "Known Seoul Coordinate",
   original: "지도 표시 가능",
   merged_static: "지도 표시 가능",

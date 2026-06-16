@@ -6,5 +6,6 @@
 2. `npm install`
 3. `npm run dev`
 
-Backend API is expected at `http://127.0.0.1:8000`.
-If needed, change the `API_BASE_URL` constant in `app/page.js`.
+The app uses Next.js API routes by default, so `/recommend`, `/route`, and `/evaluation` work from bundled local JSON/CSV data without a separate backend.
+
+Optional FastAPI integration can be enabled with `API_BASE_URL` in `.env.local`; do not set a localhost URL in production.

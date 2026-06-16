@@ -250,12 +250,9 @@ export default function EvaluationDashboardPage() {
     try {
       setIsLoading(true);
       setErrorMessage("");
-      const [evaluationPayload, coveragePayload] = await Promise.all([
-        fetchJson("/evaluation/dashboard"),
-        fetchJson("/coverage/dashboard?limit=12"),
-      ]);
-      setEvaluation(evaluationPayload);
-      setCoverage(coveragePayload);
+      const summaryPayload = await fetchJson("/api/evaluation/summary");
+      setEvaluation(summaryPayload.evaluationDashboard || summaryPayload);
+      setCoverage(summaryPayload.coverageDashboard || { summary: {}, missing_by_place_type: [], missing_by_district: [] });
     } catch (error) {
       setErrorMessage(error.message);
     } finally {
@@ -301,7 +298,7 @@ export default function EvaluationDashboardPage() {
       {isLoading ? <LoadingState title="평가 대시보드를 불러오는 중입니다" /> : null}
       {!isLoading && !errorMessage && (evaluation?.static_fallback || coverage?.static_fallback) ? (
         <div className="demoNotice" role="status">
-          <Tag tone="amber">정적 데모 모드</Tag>
+          <Tag tone="blue">local data mode</Tag>
           <span>{evaluation?.fallback_message || coverage?.fallback_message || STATIC_DEMO_MESSAGE}</span>
         </div>
       ) : null}

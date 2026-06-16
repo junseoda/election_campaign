@@ -4,7 +4,7 @@
 
 This frontend is a Next.js App Router web app for a campaign route and venue recommendation system based on Seoul public data and candidate schedule evaluation results.
 
-The recommendation, route, and evaluation screens call the existing FastAPI backend through `NEXT_PUBLIC_API_BASE_URL`. The backend reads the CSV outputs under the project-level `output/` directory. Do not regenerate, overwrite, or delete those CSV files during frontend deployment work.
+The recommendation, route, and evaluation screens call Next.js API routes first. Those route handlers can call a FastAPI backend through `API_BASE_URL` when one is configured, then automatically fall back to bundled local JSON/CSV data.
 
 ## Local Run
 
@@ -17,7 +17,7 @@ npm run build
 npm run dev
 ```
 
-The local frontend defaults to `http://127.0.0.1:3000`. For full data loading, run the backend separately at `http://127.0.0.1:8000` or set `NEXT_PUBLIC_API_BASE_URL` to another backend URL.
+The local frontend defaults to `http://127.0.0.1:3000`. A separate backend is optional; the app renders from local project data when `API_BASE_URL` is empty.
 
 ## Environment Variables
 
@@ -25,7 +25,9 @@ Create `frontend/.env.local` for local values. This file is ignored by git.
 
 ```bash
 NEXT_PUBLIC_KAKAO_MAP_API_KEY=
-NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:8000
+NEXT_PUBLIC_API_BASE_URL=
+API_BASE_URL=
+NEXT_PUBLIC_APP_ENV=local
 NEXT_PUBLIC_APP_NAME=Campaign Recommender
 ```
 
@@ -50,10 +52,12 @@ Set these in Vercel Project Settings -> Environment Variables:
 ```bash
 NEXT_PUBLIC_KAKAO_MAP_API_KEY=
 NEXT_PUBLIC_API_BASE_URL=
+API_BASE_URL=
+NEXT_PUBLIC_APP_ENV=production
 NEXT_PUBLIC_APP_NAME=Campaign Recommender
 ```
 
-For `NEXT_PUBLIC_API_BASE_URL`, use the public URL of the deployed backend API if the recommendation/evaluation data should load in production. If this variable is omitted, the app falls back to the local backend URL and pages will show a friendly loading error instead of crashing.
+Leave `NEXT_PUBLIC_API_BASE_URL` empty unless the browser truly needs a public API URL. Use server-only `API_BASE_URL` for an optional deployed FastAPI backend. If both are omitted, the app uses local JSON/CSV data through Next.js API routes and does not call localhost in production.
 
 ## Main Routes
 
@@ -84,7 +88,7 @@ Run these before deploying:
 ```bash
 npm install
 npm run build
-npm run dev
+npm run qa
 ```
 
-Then verify that `/`, `/recommend`, `/route`, and `/evaluation` open without a fatal error. If the backend is unavailable, the pages should render an error fallback rather than crashing.
+Then verify that `/`, `/recommend`, `/route`, `/evaluation`, `/api/health`, `/api/recommend`, `/api/route`, and `/api/evaluation/summary` respond normally.

@@ -331,7 +331,7 @@ export default function FuturePredictionPage() {
         avoid_duplicates: true,
       };
 
-      const response = await postJson("/route/recommend", payload);
+      const response = await postJson("/api/route", payload);
       const normalized = getRouteItems(response).map((item, index) => normalizePredictionItem(item, index, form));
       const controlled = selectControlledTopK(normalized, form);
       setIsCoordinateLoading(true);

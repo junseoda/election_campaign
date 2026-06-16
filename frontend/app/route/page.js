@@ -156,6 +156,11 @@ const HIDDEN_FALLBACK_PHRASES = [
   "후보 부족",
   "안전 fallback",
   "fallback 후보",
+  "실시간 API",
+  "연결할 수 없어",
+  "저장된 추천",
+  "저장된 데모",
+  "정적 데모",
 ];
 
 function containsHiddenFallbackText(value) {
@@ -350,10 +355,10 @@ function getRouteDataMode(route = {}) {
   const hasFallbackRouteSource = /static|fallback|frontend_static_json/.test(source);
   const hasApiRouteSource = /api|backend|live/.test(source);
   if (!HAS_PUBLIC_API_BASE_URL) {
-    return "Demo Fallback";
+    return "Local Data";
   }
   if (route?.static_fallback || route?.demo_fallback || (hasFallbackRouteSource && !hasApiRouteSource)) {
-    return "Demo Fallback";
+    return "Local Data";
   }
   const timeline = Array.isArray(route?.timeline) ? route.timeline : [];
   const coordinateSourceCounts = route?.debug?.coordinate_enrichment?.source_counts || {};
@@ -376,6 +381,9 @@ function getRouteDataModeTone(mode) {
   }
   if (mode === "Hybrid Mode") {
     return "amber";
+  }
+  if (mode === "Local Data") {
+    return "blue";
   }
   return "blue";
 }
@@ -943,8 +951,8 @@ export default function RoutePlannerPage() {
       setIsCoordinateLoading(false);
       setErrorMessage("");
       const [optionsPayload, samplePayload] = await Promise.all([
-        fetchJson("/route/options"),
-        fetchJson("/route/sample"),
+        fetchJson("/api/route/options"),
+        fetchJson("/api/route/sample"),
       ]);
       const normalizedSample = normalizeRoutePayload(samplePayload, samplePayload?.request || optionsPayload.default_request || {});
       if (!normalizedSample) {
@@ -1114,13 +1122,13 @@ export default function RoutePlannerPage() {
         window.__lastRouteDebug = null;
         window.__lastNormalizedRouteDebug = null;
       }
-      const payload = await postJson("/route/recommend", requestPayload);
+      const payload = await postJson("/api/route", requestPayload);
       if (typeof window !== "undefined") {
         window.__lastRouteDebug = payload.debug || null;
       }
       debugRoute("response debug", payload.debug || payload);
       debugRoute("route response received", {
-        endpoint: "/route/recommend",
+        endpoint: "/api/route",
         responseKeys: Object.keys(payload || {}),
         rawItemCount: getRouteItems(payload).length,
       });
@@ -1159,7 +1167,7 @@ export default function RoutePlannerPage() {
       showToast(`${districts} / ${form.target_voter_group || "타깃"} 조건으로 ${enrichedPayload.timeline.length}개 일정을 추천했습니다.`);
     } catch (error) {
       warnRoute("route recommendation failed; retained current route", {
-        endpoint: "/route/recommend",
+        endpoint: "/api/route",
         message: error.message,
       });
       setErrorMessage(error.message || "동선 추천 중 오류가 발생했습니다.");

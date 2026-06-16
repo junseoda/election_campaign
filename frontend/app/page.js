@@ -20,6 +20,7 @@ import {
   formatMetric,
   formatNumber,
   formatPercent,
+  postJson,
 } from "./components/camp/CampUI";
 import KakaoRouteMap from "./components/map/KakaoRouteMap";
 
@@ -65,17 +66,16 @@ export default function HomeDashboardPage() {
     try {
       setIsLoading(true);
       setErrorMessage("");
-      const queryPayload = await fetchJson("/optimized/queries?limit=100");
+      const queryPayload = await fetchJson("/api/optimized/queries?limit=100");
       const firstQueryId = queryPayload.queries?.[0]?.query_id;
       const [recommendationPayload, routePayload, evaluationPayload, coveragePayload] = await Promise.all([
-        fetchJson(
-          `/optimized/recommendations${
-            firstQueryId ? `?query_id=${encodeURIComponent(firstQueryId)}&limit=10` : "?limit=10"
-          }`
-        ),
-        fetchJson("/route/sample"),
-        fetchJson("/evaluation/dashboard"),
-        fetchJson("/coverage/dashboard?limit=8"),
+        postJson("/api/recommend", {
+          query_id: firstQueryId,
+          limit: 10,
+        }),
+        fetchJson("/api/route/sample"),
+        fetchJson("/api/evaluation/dashboard"),
+        fetchJson("/api/coverage/dashboard?limit=8"),
       ]);
 
       setQueries(queryPayload.queries || []);

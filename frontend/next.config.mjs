@@ -1,6 +1,22 @@
 import path from "node:path";
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/$/, "");
+const appEnv = process.env.NEXT_PUBLIC_APP_ENV || process.env.NODE_ENV;
+const isProductionLike = Boolean(process.env.VERCEL) || appEnv === "production";
+
+function isLocalUrl(value) {
+  if (!value) {
+    return false;
+  }
+  try {
+    const hostname = new URL(value).hostname.toLowerCase();
+    return ["localhost", "127.0.0.1", "::1", "0.0.0.0"].includes(hostname);
+  } catch (error) {
+    return true;
+  }
+}
+
+const safeApiBaseUrl = apiBaseUrl && !(isProductionLike && isLocalUrl(apiBaseUrl)) ? apiBaseUrl : "";
 
 const daumMapSources = [
   "https://*.daumcdn.net",
@@ -28,9 +44,8 @@ const connectSources = [
   "https://*.onrender.com",
   "https://*.railway.app",
   "https://*.up.railway.app",
-  "http://localhost:8000",
-  "http://127.0.0.1:8000",
-  ...(apiBaseUrl ? [apiBaseUrl] : []),
+  ...(!isProductionLike ? ["http://localhost:8000", "http://127.0.0.1:8000"] : []),
+  ...(safeApiBaseUrl ? [safeApiBaseUrl] : []),
 ];
 
 const contentSecurityPolicy = [
@@ -58,7 +73,7 @@ const securityHeaders = [
 ];
 
 const nextConfig = {
-  outputFileTracingRoot: path.join(process.cwd()),
+  outputFileTracingRoot: path.resolve(process.cwd(), ".."),
   async headers() {
     return [
       {

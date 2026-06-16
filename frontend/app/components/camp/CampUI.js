@@ -197,7 +197,7 @@ export function getStopId(item = {}, index = 0) {
   return item.id || `stop-${item.sequence || item.order || index + 1}`;
 }
 
-export const STATIC_DEMO_MESSAGE = "실시간 API 서버에 연결할 수 없어 저장된 데모 데이터를 표시합니다.";
+export const STATIC_DEMO_MESSAGE = "내부 정적 데이터로 추천 결과를 표시합니다.";
 
 const API_TIMEOUT_MS = 25000;
 const STATIC_DATA_CACHE = {};
@@ -529,7 +529,7 @@ function buildStaticRouteShell(request = {}) {
       model: "static_demo_route",
     },
     timeline: [],
-    insights: ["현재 정적 데모 모드로 실행 중입니다."],
+    insights: ["현재 내부 정적 데이터 모드로 실행 중입니다."],
   };
 }
 
@@ -1105,7 +1105,7 @@ async function getRouteFallback(path, body) {
         }
       ),
       insights: [
-        "현재 정적 데모 모드로 실행 중입니다.",
+        "현재 내부 정적 데이터 모드로 실행 중입니다.",
         ...((route.insights || []).slice(0, 2)),
       ],
     });
@@ -1158,10 +1158,39 @@ async function tryStaticFallback(path, body) {
   }
 }
 
+function getInternalApiPath(path) {
+  const url = getRequestUrl(path);
+  const { pathname, search } = url;
+
+  if (pathname.startsWith("/api/")) {
+    return `${pathname}${search}`;
+  }
+  if (
+    pathname.startsWith("/optimized/") ||
+    pathname === "/route/options" ||
+    pathname === "/route/sample" ||
+    pathname === "/route/recommend" ||
+    pathname === "/evaluation/dashboard" ||
+    pathname === "/coverage/dashboard"
+  ) {
+    return `/api${pathname}${search}`;
+  }
+  return "";
+}
+
+function isRouteApiPath(pathname) {
+  return pathname === "/api/route" || pathname === "/api/route/recommend" || pathname === "/route/recommend";
+}
+
+function isRecommendationApiPath(pathname) {
+  return pathname === "/api/recommend" || pathname === "/api/optimized/recommendations" || pathname === "/optimized/recommendations";
+}
+
 export async function fetchJson(path, options = {}) {
   const apiBaseUrl = getApiBaseUrl();
   const requestBody = parseRequestBody(options.body);
   const requestPathname = getRequestUrl(path).pathname;
+  const internalApiPath = getInternalApiPath(path);
   const requestMethod = String(options.method || "GET").toUpperCase();
   const shouldPreferStaticSnapshot =
     !apiBaseUrl &&
@@ -1173,6 +1202,47 @@ export async function fetchJson(path, options = {}) {
       requestPathname === "/evaluation/dashboard" ||
       requestPathname === "/coverage/dashboard"
     );
+
+  if (internalApiPath) {
+    try {
+      const response = await fetch(internalApiPath, {
+        cache: "no-store",
+        ...options,
+        headers: {
+          ...(options.body ? { "Content-Type": "application/json" } : {}),
+          ...(options.headers || {}),
+        },
+      });
+      if (!response.ok) {
+        throw new Error(`${internalApiPath} 요청 실패 (${response.status})`);
+      }
+      const payload = await response.json();
+      const internalPathname = getRequestUrl(internalApiPath).pathname;
+      if (isRouteApiPath(internalPathname) || isRouteApiPath(requestPathname)) {
+        return ensureDistrictSafeRoutePayload(
+          payload,
+          requestBody,
+          [
+            { items: STATIC_REAL_ROUTE_CANDIDATE_LIST, source: "public_csv" },
+            { items: payload.timeline || payload.schedule || [], source: "next_api_local_data" },
+          ]
+        );
+      }
+      if (isRecommendationApiPath(internalPathname) || isRecommendationApiPath(requestPathname)) {
+        return ensureDistrictSafeOptimizedPayload("/optimized/recommendations", payload);
+      }
+      return payload;
+    } catch (error) {
+      if (process.env.NODE_ENV !== "production") {
+        console.warn("[CampaignAPI] Next API route failed; trying static fallback.", error);
+      }
+      const staticPayload = await tryStaticFallback(path, options.body);
+      if (staticPayload) {
+        return staticPayload;
+      }
+      throw error;
+    }
+  }
 
   if (shouldPreferStaticSnapshot) {
     const staticPayload = await tryStaticFallback(path, options.body);
@@ -1415,7 +1485,7 @@ export function LoadingState({ title = "추천 결과를 생성하는 중입니�
   );
 }
 
-export function ErrorState({ title = "추천 결과를 불러오지 못했습니다.", message, onRetry }) {
+export function ErrorState({ title = "데이터를 준비하지 못했습니다.", message, onRetry }) {
   return (
     <div className="statePanel error" role="alert">
       <strong>{title}</strong>

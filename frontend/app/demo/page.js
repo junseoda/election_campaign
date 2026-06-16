@@ -15,6 +15,7 @@ import {
   STATIC_DEMO_MESSAGE,
   Tag,
   fetchJson,
+  postJson,
 } from "../components/camp/CampUI";
 
 function QuerySelector({ queries, selectedQueryId, selectedQuery, onChange, onGenerate, isDirty, isLoading }) {
@@ -131,7 +132,7 @@ export default function OptimizedDemoPage() {
     try {
       setIsLoadingQueries(true);
       setErrorMessage("");
-      const payload = await fetchJson("/optimized/queries?limit=100");
+      const payload = await fetchJson("/api/optimized/queries?limit=100");
       const loadedQueries = payload.queries || [];
       setQueries(loadedQueries);
       setSelectedQueryId((current) => current || loadedQueries[0]?.query_id || "");
@@ -150,7 +151,10 @@ export default function OptimizedDemoPage() {
     try {
       setIsLoadingRecommendations(true);
       setErrorMessage("");
-      const payload = await fetchJson(`/optimized/recommendations?query_id=${encodeURIComponent(queryId)}&limit=10`);
+      const payload = await postJson("/api/recommend", {
+        query_id: queryId,
+        limit: 10,
+      });
       setRecommendationData(payload);
       setIsConditionDirty(false);
     } catch (error) {
@@ -203,7 +207,7 @@ export default function OptimizedDemoPage() {
       {isLoadingQueries ? <LoadingState title="추천 조건을 준비하고 있어요" /> : null}
       {!isLoadingQueries && !errorMessage && recommendationData?.static_fallback ? (
         <div className="demoNotice" role="status">
-          <Tag tone="amber">정적 데모 모드</Tag>
+          <Tag tone="blue">local data mode</Tag>
           <span>{recommendationData.fallback_message || STATIC_DEMO_MESSAGE}</span>
         </div>
       ) : null}

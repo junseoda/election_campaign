@@ -223,7 +223,7 @@ export function buildDemoFallbackRoutePayload(request = {}, meta = {}) {
   return {
     static_fallback: true,
     demo_fallback: true,
-    fallback_message: "\uc2e4\uc2dc\uac04 API \uc5f0\uacb0\uc774 \uc5c6\uc744 \ub54c \uc9c0\ub3c4 \uc2dc\uc5f0\uc744 \uc704\ud574 \ubd84\ub9ac\ub41c \ub370\ubaa8 fallback \ub3d9\uc120\uc744 \ud45c\uc2dc\ud569\ub2c8\ub2e4.",
+    fallback_message: "\ub0b4\ubd80 \uc815\uc801 \ub370\uc774\ud130\ub85c \uc9c0\ub3c4 \uc2dc\uc5f0\uc6a9 \ub3d9\uc120\uc744 \ud45c\uc2dc\ud569\ub2c8\ub2e4.",
     request: mergedRequest,
     summary: {
       date: mergedRequest.date,

@@ -71,7 +71,7 @@ export default function MapPreviewPage() {
     try {
       setIsLoading(true);
       setErrorMessage("");
-      const payload = await fetchJson("/route/sample");
+      const payload = await fetchJson("/api/route/sample");
       setRoute(payload);
       setSelectedStopId(`stop-${payload?.timeline?.[0]?.order || 1}`);
     } catch (error) {
@@ -133,7 +133,7 @@ export default function MapPreviewPage() {
       {isLoading ? <LoadingState title="지도 데이터를 준비하고 있어요" /> : null}
       {!isLoading && !errorMessage && route?.static_fallback ? (
         <div className="demoNotice" role="status">
-          <Tag tone="amber">정적 데모 모드</Tag>
+          <Tag tone="blue">local data mode</Tag>
           <span>{route.fallback_message || STATIC_DEMO_MESSAGE}</span>
         </div>
       ) : null}

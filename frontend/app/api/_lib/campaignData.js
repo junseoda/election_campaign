@@ -69,6 +69,22 @@ const SEED_PLACES = [
   },
 ];
 
+const SEED_QUERIES = [
+  {
+    query_id: "seed-query",
+    date: "2026-05-20",
+    time: "09:00",
+    district: "Jung-gu",
+    place_name: "Seoul City Hall Plaza",
+    place_type: "transport_hub",
+    target_voter_group: "office_workers",
+    campaign_activity_type: "commute_greeting",
+    campaign_goal: "commute_greeting",
+    evaluation_context: "Production-safe demo query backed by local seed recommendations.",
+    context_tags: "commute;transit;office_workers",
+  },
+];
+
 const SEED_MODEL_COMPARISON = [
   {
     model_name: "baseline",
@@ -452,7 +468,7 @@ function bounded(value) {
 
 function getRecommendationQuery(payload = {}) {
   const data = readRecommendationData();
-  const queries = data.queries || [];
+  const queries = data.queries?.length ? data.queries : SEED_QUERIES;
   const requestedQueryId = payload.query_id || payload.queryId;
   if (requestedQueryId) {
     const matched = queries.find((query) => query.query_id === requestedQueryId);
@@ -772,7 +788,7 @@ export function getRouteOptions() {
 
 export function getOptimizedQueries(limit = 100) {
   const data = readRecommendationData();
-  const queries = data.queries || [];
+  const queries = data.queries?.length ? data.queries : SEED_QUERIES;
   return {
     ok: true,
     source: "local-data",
